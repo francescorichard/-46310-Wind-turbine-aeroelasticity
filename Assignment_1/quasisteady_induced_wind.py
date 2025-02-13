@@ -50,7 +50,7 @@ RATED_POWER = 10 # [MW]
 V_IN = 4 # cut in speed [m/s]
 V_OUT = 25 #cut-out speed [m/s]
 RHO = 1.225 # density [kg/m^3]
-TIP_PITCH = np.deg2rad(2) # tip pitch chosen arbitrarly [m/s]
+TIP_PITCH = np.deg2rad(0) # tip pitch chosen arbitrarly [m/s]
 omega = 0.72 #rotational speed [rad/s]
 theta_cone = np.deg2rad(0)
 theta_yaw = np.deg2rad(0)
@@ -60,11 +60,10 @@ H =119 #hub height
 L_s = 7.1 #shaft length [m]
 R = 89.15 # [m]
 dt = 0.15 #delta t [s]
-x_b = 70 #[m]
 TOTAL_TIME = 15 # [s]
 shear_exponent = 0
 ws_hub_height = 8 # [m/s]
-a_x = 3.32 # [m] it should change with height
+a_x = 0 # [m] it should change with height
 
 #%% BEM CODE
 def convergence_a_aPrime(V_rel,tip_pitch,twist,c,rho,
@@ -237,7 +236,7 @@ def Glauert_correction(iteration,W_z,vel_sys4,aa):
     if iteration == 0:
         W_z = 0
     V_0 = np.sqrt(vel_sys4[1]**2+vel_sys4[2]**2)
-    #aa = -W_z/V_0
+    aa = -W_z/V_0
     if aa <= 1/3:
         f_g = 1
     else:
@@ -286,6 +285,7 @@ power = np.zeros((time_steps,1))
 thrust = np.zeros((time_steps,1))
 a_values = np.zeros((time_steps,1))
 a_mean = 0
+
 for ii in range(0,time_steps):
     tangential_force = np.zeros((radius.shape[0],B))
     normal_force = np.zeros((radius.shape[0],B))
