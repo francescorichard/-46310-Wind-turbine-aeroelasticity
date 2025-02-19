@@ -404,7 +404,7 @@ class QuasiSteady():
         return denominator
     
     @staticmethod
-    def Glauert_correction(iteration,W_z,vel_sys4,aa_mean,local_calculation):
+    def Glauert_correction(iteration,W_z,vel_sys4,aa_mean,local_a_calculation):
         '''It calculates the Glauert's correction based on the value of the 
         axial induction factor.
         
