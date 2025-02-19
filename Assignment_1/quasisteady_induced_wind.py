@@ -288,14 +288,59 @@ class QuasiSteady():
         return vel_sys4
     
     def dynamic_wake(self,W_qs_now,W_qs_bef,W_int_bef,W_ind_bef,tau_1,tau_2,dt):
-        k = 0.6
-        H = W_qs_now + k*tau_1*(W_qs_now-W_qs_bef)/dt
-        W_int_now = H+(W_int_bef-H)*np.exp(-dt/tau_1)
-        W_ind_now = W_int_now+(W_ind_bef-W_int_now)*np.exp(-dt/tau_2)
+        '''This function calculates the induced wind for the dynamic wake 
+        model from the quasi steady one and the intermediate induced wind.
+        
+        Parameters:
+        W_qs_now (1-D array like):
+            quasi steady induced wind at the current time step (now)
+        W_qs_bef (1-D array like): 
+            quasi steady induced wind at the previous time step (before)
+        W_int_bef (1-D array like): 
+            intermediate induced wind at the previous time step (before)
+        W_ind_bef (1-D array like): 
+            induced wind at the previous time step (before)
+        tau_1 (float): 
+            first time constant
+        tau_2 (float): 
+            second time constant
+        dt (float): 
+            time step of the simulation
+
+        Returns:
+        W_ind_now (1-D array like): 
+            induced wind at the previous time step (now)
+        W_int_now (1-D array like): 
+            intermediate induced wind at the previous time step (now)
+
+        '''
+        k = 0.6 #constant for the differential equation
+        H = W_qs_now + k*tau_1*(W_qs_now-W_qs_bef)/dt #right part of the differential equation
+        W_int_now = H+(W_int_bef-H)*np.exp(-dt/tau_1) #intermediate induced velocity
+                                                      #at the current time step  
+        W_ind_now = W_int_now+(W_ind_bef-W_int_now)*np.exp(-dt/tau_2) #intermediate 
+                                                                      #induced velocity
+                                                                      #at the current time step 
         return W_ind_now,W_int_now
     
     def time_constants_induced_wind(self,a,V_0,r):
-        a = np.min(np.array([a,0.5]))
+        '''This function determines the time constants of the differential 
+        equation used to calculate the induced wind in the dynamic wake model.
+        
+        Parameters:
+        a (foat):
+            axial induction factor
+        V_0 (float): 
+            module of the wind speed
+        r (float): 
+            position on the blade
+
+        Returns:
+        tau_1 (float): time constant number 1
+        tau_2 (float): time constant number 2
+
+        '''
+        a = np.min(np.array([a,0.5])) #for the model a can be maximum 0.5
         tau_1 = 1.1/(1-1.3*a)*self.R/V_0
         tau_2 = (0.39-0.26*(r/self.R)**2)*tau_1
         return tau_1,tau_2
@@ -434,21 +479,77 @@ class QuasiSteady():
         V_rel_z = vel_sys4[2]+induced_wind[2]
         return np.array([0, V_rel_y, V_rel_z])
     
-    def convergence_a_aPrime(self,V_rel,twist,c,thick_to_chord,aoa,
+    def calculation_loads(self,V_rel,twist,c,thick_to_chord,aoa,
                              lift_coefficient,drag_coefficient,separation_function,
                              linear_lift_coefficient,stalled_lift_coefficient,   
                              number_of_airfoils,thickness_to_chord,iteration,fs_bef,dt,t):
+        '''This function calculates the lift, drag, tangential force, and normal
+        force for each element on the blade. The calculation is done by interpolating
+        the angle of attack between the data given in the uploaded files.
+        
+        Parameters:
+        V_rel (1-D array like):
+            relative velocity on the element
+        twist (float):
+            local twist angle of the element.
+        c (float): 
+            chord length of the element
+        thick_to_chord (float):
+            ratio between thickness and chord in percentage
+        aoa (2-D array like): 
+            matrix containing each angle of attack for which C_l and C_d are
+            calcualted, for each airfoil.
+        lift_coefficient (2-D array like): 
+            matrix containing the lift coefficient for each angle of attack for
+            each airfoil
+        drag_coefficient (2-D array like): 
+            matrix containing the drag coefficient for each angle of attack for
+            each airfoil
+        separation_function (2-D array like): 
+            matrix containing the separation function for the dynamic wake model
+            for each angle of attack for each airfoil
+        linear_lift_coefficient (2-D array like): 
+            matrix containing the linear lift coefficient for each angle of attack 
+            for each airfoil
+        stalled_lift_coefficient (2-D array like): 
+            matrix containing the stalled lift coefficient for each angle of attack 
+            for each airfoil
+        number_of_airfoils (int): number of used airfoils
+        thickness_to_chord (1-D array like):
+            array containing the thickness to chord ratio (in percentage) of the 
+            used airfoils.
+        iteration (int): 
+            time loop iteration
+        fs_bef (float): 
+            separation function's value at the previous time step
+        dt (float): 
+            time step of the simulation
+        t (float):
+            current time of the simulation 
 
-        abs_V_rel = np.sqrt(V_rel[1]**2+V_rel[2]**2)
-        phi = np.arctan2(V_rel[2],-V_rel[1])
-        local_pitch = twist+self.TIP_PITCH[iteration]
+        Returns:
+        lift (float):
+            lift per unit length for the blade's element
+        phi (float): 
+            flow angle for the blade's element
+        infinitesimal_norm_force (float): 
+            p_n for the blade's element
+        infinitesimal_tang_force (float): 
+            p_t for the blade's element
+        fs_now (float):
+            separation function at the current time step
+        '''
+        abs_V_rel = np.sqrt(V_rel[1]**2+V_rel[2]**2) #module of the relative velocity
+        phi = np.arctan2(V_rel[2],-V_rel[1]) #flow angle
+        local_pitch = twist+self.TIP_PITCH[iteration] 
         angle_attack = phi-local_pitch
+        
         # interpolating
-        #clthick = np.zeros((number_of_airfoils,1))
-        cdthick = np.zeros((number_of_airfoils,1))
-        fs_thick = np.zeros((number_of_airfoils,1))
-        linear_cl_thick = np.zeros((number_of_airfoils,1))
-        stalled_cl_thick = np.zeros((number_of_airfoils,1))
+        #clthick = np.zeros((number_of_airfoils,1)) #lift coefficient
+        cdthick = np.zeros((number_of_airfoils,1)) #drag coefficient
+        fs_thick = np.zeros((number_of_airfoils,1)) #separation function
+        linear_cl_thick = np.zeros((number_of_airfoils,1)) #linear lift coefficient
+        stalled_cl_thick = np.zeros((number_of_airfoils,1)) #stalled lift coefficient
         for kk in range(0,number_of_airfoils):
             #clthick[kk] = interpolate.interp1d(aoa[:,kk], lift_coefficient[:,kk],
             #                                   kind='linear')(np.rad2deg(angle_attack))
@@ -473,14 +574,14 @@ class QuasiSteady():
         # calculate dynamic stall
         tau = 4*c/abs_V_rel
         fs_now = fs_stat+(fs_bef-fs_stat)*np.exp(-dt/tau)
-        
         clift_dyn_stall = fs_now*linear_clift+(1-fs_now)*stalled_clift
+        
+        # determining the loads on the blade's element
         lift = 1/2*self.RHO*c*clift_dyn_stall*abs_V_rel**2
         drag = 1/2*self.RHO*c*cdrag*abs_V_rel**2
         infinitesimal_tang_force = lift*np.sin(phi)-drag*np.cos(phi)
         infinitesimal_norm_force = lift*np.cos(phi)+drag*np.sin(phi)
-            
-        
+              
         return lift,phi,infinitesimal_norm_force,infinitesimal_tang_force,fs_now
     
     
@@ -507,11 +608,19 @@ if __name__ == "__main__":
     shear_exponent = 0            # [-] velocity profile's shear exponent
     ws_hub_height = 8             # [m/s] hub height wind speed
     a_x = 3.32                    # [m] tower's radius
-    local_a_calculation = True    # local calculation of axial induction factor
     TIP_PITCH = np.zeros(time_steps)  # [rad] tip pitch
+    
+    # If I want to determine the axial induction factor locally for each
+    # radial position I put True, otherwise to use a mean value from the entire
+    # turbine I switch to False
+    local_a_calculation = True    # local calculation of axial induction factor
+    
+    # For the third question, the pitch angle changes from 0 to 2 degrees for 
+    # a certain period to see the reaction's delay in the power.
     third_point = True
     if third_point:
         TIP_PITCH[(np.arange(time_steps)*dt>=100) & (np.arange(time_steps)*dt <= 150)] = np.deg2rad(2)
+    
     #%% Opening file and saving the contents
     cylinder = np.loadtxt('C:\\COPENAGHEN PRIMO ANNO\\AEROELASTICITY\\turbine_data\\cylinder_ds.txt')
     FFA_W3_301 = np.loadtxt('C:\\COPENAGHEN PRIMO ANNO\\AEROELASTICITY\\turbine_data\\FFA-W3-301_ds.txt');
@@ -522,6 +631,7 @@ if __name__ == "__main__":
     blade_data = np.loadtxt('C:\\COPENAGHEN PRIMO ANNO\\AEROELASTICITY\\turbine_data\\bladedat.txt');
     number_of_airfoils = 6;
     radius = blade_data[:,0]
+    
     # save data in different matrix.I want to save a matrix with every variable.
     # Angle of attack, lift coefficient, drag coefficient, and thrust coefficient
     total_data = np.concatenate((cylinder,
@@ -532,9 +642,10 @@ if __name__ == "__main__":
                                 FFA_W3_2411),axis=1)
     
     #initialize the lift, drag, angle of attack, and thickness to chord
-    #ratio matrixes
+    #ratio matrixes. I also initialize the separation function, the linear lift
+    #coefficient and the stalled lift coefficient, needed for the dynamic stall.
     thickness_to_chord = np.array((100, 60, 48, 36, 30.1, 24.1))
-    aoa = np.zeros((total_data.shape[0],number_of_airfoils))
+    aoa = np.zeros((total_data.shape[0],number_of_airfoils)) #angle of attack
     lift_coefficient = np.zeros((total_data.shape[0],number_of_airfoils))
     drag_coefficient = np.zeros((total_data.shape[0],number_of_airfoils))
     separation_function = np.zeros((total_data.shape[0],number_of_airfoils))
@@ -552,30 +663,34 @@ if __name__ == "__main__":
 
 
     #%% vector inizialization
-    position_blades = np.zeros((time_steps,B,3))
-    V0_system1 = np.zeros((time_steps,B,3))
-    V0_system4 = np.zeros((time_steps,B,3)) 
-    W_induced_quasi_steady = np.zeros((time_steps,B,radius.shape[0],3))
-    W_induced_intermediate = np.zeros((time_steps,B,radius.shape[0],3))
-    W_induced = np.zeros((time_steps,B,radius.shape[0],3))
-    f_s = np.zeros((time_steps,B,radius.shape[0]))
-    azimuthal_angle_blade1 = np.zeros((time_steps,1))
-    time_array = np.linspace(0, TOTAL_TIME, time_steps)
-    theta_blade = np.zeros((B,1))
-    final_tangential_force = np.zeros((time_steps,radius.shape[0],B))
-    final_normal_force = np.zeros((time_steps,radius.shape[0],B))
-    torque = np.zeros((time_steps,1))
-    power = np.zeros((time_steps,1))
-    thrust = np.zeros((time_steps,1))
+    position_blades = np.zeros((time_steps,B,3)) #position of the considered point
+                                                 #in space
+    V0_system1 = np.zeros((time_steps,B,3)) #velocity in ground system
+    V0_system4 = np.zeros((time_steps,B,3)) #velocity in blade system
+    W_induced_quasi_steady = np.zeros((time_steps,B,radius.shape[0],3)) #quasi-steady
+                                                                        #induced velocity
+    W_induced_intermediate = np.zeros((time_steps,B,radius.shape[0],3)) #intermediate induced
+                                                                        #velocity used for
+                                                                        #dynamic wake calculation
+    W_induced = np.zeros((time_steps,B,radius.shape[0],3)) #induced wind velocity
+    f_s = np.zeros((time_steps,B,radius.shape[0])) #separation function for dynamic wake
+    azimuthal_angle_blade1 = np.zeros((time_steps,1)) #angle position of blade 1
+    time_array = np.linspace(0, TOTAL_TIME, time_steps) #time array
+    theta_blade = np.zeros((B,1)) #angle position of the three blades
+    final_tangential_force = np.zeros((time_steps,radius.shape[0],B)) #p_t
+    final_normal_force = np.zeros((time_steps,radius.shape[0],B)) #p_n
+    torque = np.zeros((time_steps,1)) #torque over time
+    power = np.zeros((time_steps,1)) #power over time
+    thrust = np.zeros((time_steps,1)) #thrust over time
     
     #initialization of axial and tangential induction factors
-    a_values = np.zeros((time_steps,1))
-    a_mean = 0
+    a_values = np.zeros((time_steps,1)) #axial induction factor
+    a_mean = 0 #initialization if a global induction factor is chosen
     
     #%% resolution
     UNSTEADY_SOLVER = QuasiSteady(B,RATED_POWER,V_IN,V_OUT,RHO,TIP_PITCH,
                                   omega,theta_cone,theta_yaw,theta_pitch,
-                                  H,L_s,R,shear_exponent)
+                                  H,L_s,R,shear_exponent) #instance of the class
     
 #time loop
 for ii in range(0,time_steps):
@@ -613,13 +728,16 @@ for ii in range(0,time_steps):
                     chord = blade_data[kk,2]
                     thick_to_chord = blade_data[kk,3]
                     
-                    #calculation relative velocity
+                    #calculation relative velocity. In the first iteration the
+                    #induced wind is set to 0, as also the separation function.
+                    #Hence, there will be a small unsteady period where it'll
+                    #converge to the right value.
                     if ii == 0:
                         V_rel = UNSTEADY_SOLVER.relative_velocity(V0_system4\
                                               [ii,jj,:], [0, 0, 0], radius[kk])
                         W_z = 0
                         lift,phi,normal_force[kk,jj],tangential_force[kk,jj],f_s[ii,jj,kk] = \
-                            UNSTEADY_SOLVER.convergence_a_aPrime(V_rel,twist, chord,\
+                            UNSTEADY_SOLVER.calculation_loads(V_rel,twist, chord,\
                                                  thick_to_chord, aoa, lift_coefficient,\
                                                  drag_coefficient,separation_function,
                                                  linear_lift_coefficient,stalled_lift_coefficient,\
@@ -631,13 +749,14 @@ for ii in range(0,time_steps):
                                               radius[kk])
                         W_z = W_induced[ii-1,jj,kk,2]
                         lift,phi,normal_force[kk,jj],tangential_force[kk,jj],f_s[ii,jj,kk] = \
-                            UNSTEADY_SOLVER.convergence_a_aPrime(V_rel,twist, chord,\
+                            UNSTEADY_SOLVER.calculation_loads(V_rel,twist, chord,\
                                                  thick_to_chord, aoa, lift_coefficient,\
                                                  drag_coefficient,separation_function,
                                                  linear_lift_coefficient,stalled_lift_coefficient,\
                                                  number_of_airfoils,\
                                                  thickness_to_chord,ii,f_s[ii-1,jj,kk],dt,time)
-                    #induced wind calculation
+                                
+                    #induced wind calculation with dynamic wake
                     F = UNSTEADY_SOLVER.tip_loss_correction(radius[kk], phi)
                     f_g,a = UNSTEADY_SOLVER.Glauert_correction(ii,W_z,V0_system4[ii,jj,:],\
                                             a_mean,local_a_calculation)
@@ -645,7 +764,11 @@ for ii in range(0,time_steps):
                                             (ii, V0_system4[ii,jj,:],f_g, W_z)
                     W_induced_quasi_steady[ii,jj,kk,:] = UNSTEADY_SOLVER.induced_wind_quasi_steady\
                                             (ii,lift,phi, radius[kk], F, induced_denominator)
+                    
+                    #we consider the dynamic wake model just in the third point
                     if third_point:
+                        #if we considered also the first part, there would be
+                        #a long unsteady period.
                         if ii < 10:
                             tau_1,tau_2 = (1e-3,1e-3)
                         else:
@@ -659,6 +782,7 @@ for ii in range(0,time_steps):
                                                     tau_1,tau_2,dt)
                     else:
                         W_induced[ii,jj,kk,:] =  W_induced_quasi_steady[ii,jj,kk,:]
+                        
         # mean value of a on the blades (calculated as the value at 0.7*R).
         if ii!=0:
             a_mean = (-W_induced[ii-1,:,8,2]/ws_hub_height).mean()
@@ -703,7 +827,7 @@ plt.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
 plt.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
 plt.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
 
-
+#calculating the execution time of the script
 end_time = tm.perf_counter()
 execution_time = end_time-start_time
 print(f'The program required {execution_time:.1f} s')
