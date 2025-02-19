@@ -493,7 +493,6 @@ if __name__ == "__main__":
     V_IN = 4                      # [m/s] cut in speed 
     V_OUT = 25                    # [m/s] cut-out speed
     RHO = 1.225                   # [kg/m^3] density 
-    #TIP_PITCH = np.deg2rad(0)     # [rad] tip pitch 
     omega = 0.72                  # [rad/s] rotational speed 
     theta_cone = np.deg2rad(0)    # [rad] cone angle
     theta_yaw = np.deg2rad(0)     # [rad] yaw angle
@@ -501,24 +500,18 @@ if __name__ == "__main__":
     H =119                        # [m] hub height
     L_s = 7.1                     # [m] shaft length 
     R = 89.15                     # [m] turbine's radius
-    dt = 0.15                     # [s] time step for the simulation
-    TOTAL_TIME = 180             # [s] total time of the simulation
-    time_steps = int(TOTAL_TIME/dt)
+    d_angle = np.deg2rad(6)       # [rad] angle step for the simulation
+    dt = d_angle/omega            # [s] time step for the simulation
+    TOTAL_TIME = 180              # [s] total time of the simulation
+    time_steps = int(np.floor(TOTAL_TIME/dt))
     shear_exponent = 0            # [-] velocity profile's shear exponent
     ws_hub_height = 8             # [m/s] hub height wind speed
-    a_x = 0                       # [m] tower's radius
+    a_x = 3.32                    # [m] tower's radius
     local_a_calculation = True    # local calculation of axial induction factor
-    TIP_PITCH = np.empty(time_steps)
+    TIP_PITCH = np.zeros(time_steps)  # [rad] tip pitch
     third_point = True
     if third_point:
-        for ii in range(time_steps):
-            if ii<660 or ii>1000:
-                TIP_PITCH[ii] = np.deg2rad(0)
-            else:
-                TIP_PITCH[ii] = np.deg2rad(2)
-    else:
-        for ii in range(time_steps):
-            TIP_PITCH[ii] = np.deg2rad(0)
+        TIP_PITCH[(np.arange(time_steps)*dt>=100) & (np.arange(time_steps)*dt <= 150)] = np.deg2rad(2)
     #%% Opening file and saving the contents
     cylinder = np.loadtxt('C:\\COPENAGHEN PRIMO ANNO\\AEROELASTICITY\\turbine_data\\cylinder_ds.txt')
     FFA_W3_301 = np.loadtxt('C:\\COPENAGHEN PRIMO ANNO\\AEROELASTICITY\\turbine_data\\FFA-W3-301_ds.txt');
