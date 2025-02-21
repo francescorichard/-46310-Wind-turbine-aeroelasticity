@@ -2,7 +2,7 @@
 
 import numpy as np
 from scipy import interpolate
-
+import pandas as pd
 #%% INITIALIZE THE CLASS
 
 class LoadsCalculation():
@@ -150,5 +150,4 @@ class LoadsCalculation():
         infinitesimal_norm_force = lift*np.cos(phi)+drag*np.sin(phi)
               
         return lift,phi,infinitesimal_norm_force,infinitesimal_tang_force,fs_now
-    
     
