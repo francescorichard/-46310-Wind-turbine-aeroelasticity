@@ -46,7 +46,7 @@ mpl.rcParams['savefig.bbox'] = "tight"
 if __name__ == "__main__":
     #%% Initialize values
 
-    B = 3                         # [-] number of blades
+    B = 3                        # [-] number of blades
     RATED_POWER = 10*1e6          # [MW] rated power
     V_IN = 4                      # [m/s] cut in speed 
     V_OUT = 25                    # [m/s] cut-out speed
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     time_steps = int(np.floor(TOTAL_TIME/dt))
     shear_exponent = 0            # [-] velocity profile's shear exponent
     ws_hub_height = 8             # [m/s] hub height wind speed
-    a_x = 0                   # [m] tower's radius
+    a_x = 0                       # [m] tower's radius
     TIP_PITCH = np.zeros(time_steps)  # [rad] tip pitch
     
     # If I want to determine the axial induction factor locally for each
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     
     # For the third question, the pitch angle changes from 0 to 2 degrees for 
     # a certain period to see the reaction's delay in the power.
-    third_point = True
+    third_point = False
     if third_point:
         TIP_PITCH[(np.arange(time_steps)*dt>=100) & (np.arange(time_steps)*dt <= 150)] = np.deg2rad(2)
     
@@ -116,9 +116,12 @@ if __name__ == "__main__":
     POSITION = PositionDefinition(TRANSFORMATION_MATR,omega,H,L_s)
     UNDISTURBED_WIND = UndisturbedWindSpeed(TRANSFORMATION_MATR,H,shear_exponent)
     INDUCED_WIND = InducedWind(B,RHO,TIP_PITCH,omega, R)
-    LOADS_CALCULATION = LoadsCalculation(B,RATED_POWER,V_IN,V_OUT,RHO,TIP_PITCH,
-                                  omega,theta_cone,theta_yaw,theta_pitch,
-                                  H,L_s,R,shear_exponent)
+    LOADS_CALCULATION = LoadsCalculation(aoa, lift_coefficient,drag_coefficient,\
+                             separation_function,linear_lift_coefficient,\
+                             stalled_lift_coefficient,DATA.number_of_airfoils,\
+                             thickness_to_chord,B,RATED_POWER,V_IN,V_OUT,RHO,\
+                             TIP_PITCH,omega,theta_cone,theta_yaw,theta_pitch,
+                             H,L_s,R,shear_exponent)
     
 #time loop
     for ii in range(0,time_steps):
@@ -165,11 +168,7 @@ if __name__ == "__main__":
                             W_z = 0
                             lift,phi,normal_force[kk,jj],tangential_force[kk,jj],f_s[ii,jj,kk] = \
                                 LOADS_CALCULATION.calculation_loads(V_rel,twist, chord,\
-                                                     thick_to_chord, aoa, lift_coefficient,\
-                                                     drag_coefficient,separation_function,
-                                                     linear_lift_coefficient,stalled_lift_coefficient,\
-                                                     DATA.number_of_airfoils,\
-                                                     thickness_to_chord,ii,0,dt,time)
+                                                     thick_to_chord,ii,0,dt,time)
                         else:
                             V_rel = LOADS_CALCULATION.relative_velocity(V0_system4\
                                                   [ii,jj,:], W_induced[ii-1,jj,kk,:],\
@@ -177,11 +176,7 @@ if __name__ == "__main__":
                             W_z = W_induced[ii-1,jj,kk,2]
                             lift,phi,normal_force[kk,jj],tangential_force[kk,jj],f_s[ii,jj,kk] = \
                                 LOADS_CALCULATION.calculation_loads(V_rel,twist, chord,\
-                                                     thick_to_chord, aoa, lift_coefficient,\
-                                                     drag_coefficient,separation_function,
-                                                     linear_lift_coefficient,stalled_lift_coefficient,\
-                                                     DATA.number_of_airfoils,\
-                                                     thickness_to_chord,ii,f_s[ii-1,jj,kk],dt,time)
+                                                     thick_to_chord,ii,f_s[ii-1,jj,kk],dt,time)
                                     
                         #induced wind calculation with dynamic wake
                         F = INDUCED_WIND.tip_loss_correction(radius[kk], phi)
@@ -232,8 +227,8 @@ fig = plt.figure(1)
 plt.plot(time_array,power*1e-6,linestyle='--',label='$Power$',color = colors[0])
 plt.plot(time_array,thrust*1e-6,linestyle='--',label='$Thrust$',color = colors[1])
 plt.legend(loc="upper right",frameon= False)
-plt.xlabel('$t\: [s]$')
-plt.ylabel('$P\:&\:T\:[MW\:&\:MN]$')
+plt.xlabel(r'$t\: [s]$')
+plt.ylabel(r'$P\:&\:T\:[MW\:&\:MN]$')
 plt.xlim([time_array[0], time_array[-1]])
 plt.minorticks_on()
 plt.tick_params(direction='in',right=True,top =True)
@@ -245,8 +240,8 @@ fig = plt.figure(2)
 plt.plot(radius,final_tangential_force[-1,:,0],linestyle='--',label='$P_y$',color = colors[0])
 plt.plot(radius,final_normal_force[-1,:,0],linestyle='--',label='$P_z$',color = colors[1])
 plt.legend(loc="upper left",frameon= False )
-plt.xlabel('$r\: [m]$')
-plt.ylabel('$p_y\:&\:p_z\:[N]$')
+plt.xlabel(r'$r\: [m]$')
+plt.ylabel(r'$p_y\:&\:p_z\:[N]$')
 plt.xlim([radius[0], radius[-1]])
 plt.minorticks_on()
 plt.tick_params(direction='in',right=True,top =True)

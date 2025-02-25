@@ -6,7 +6,9 @@ import pandas as pd
 #%% INITIALIZE THE CLASS
 
 class LoadsCalculation():
-    def __init__(self,B=3,P_rtd=10*1e6,V_in=4,V_out=25,RHO=1.225,TIP_PITCH=0,
+    def __init__(self,aoa, lift_coefficient,drag_coefficient,separation_function,
+                             linear_lift_coefficient,stalled_lift_coefficient,   
+                             number_of_airfoils,thickness_to_chord,B=3,P_rtd=10*1e6,V_in=4,V_out=25,RHO=1.225,TIP_PITCH=0,
                  omega=0.72,theta_cone=0,theta_yaw=0,theta_pitch=0,H=119,L_s=7.1,
                  R=89.15,shear_exponent=0):
         self.B = B                            # [-] Number of blades
@@ -23,7 +25,22 @@ class LoadsCalculation():
         self.L_s = L_s                        # [m] Nacelle length
         self.R = R                            # [m] Rotor radius
         self.shear_exponent = shear_exponent  # [-] Velocity shear exponent
-
+        self.number_of_airfoils = number_of_airfoils
+        self.aoa = aoa[:,0]
+        self.thickness_to_chord = thickness_to_chord
+        self.lift_coefficient = lift_coefficient
+        self.drag_coefficient = drag_coefficient
+        self.separation_function = separation_function
+        self.linear_lift_coefficient = linear_lift_coefficient
+        self.stalled_lift_coefficient = stalled_lift_coefficient
+        # self.interp_cd = interpolate.interp1d(aoa[:,0], drag_coefficient,axis=0,
+        #                                    kind='linear')
+        # self.interp_fs = interpolate.interp1d(aoa[:,0], separation_function,axis=0,
+        #                                    kind='linear')
+        # self.interp_linear_cl = interpolate.interp1d(aoa[:,0], linear_lift_coefficient,axis=0,
+        #                                    kind='linear')
+        # self.interp_stalled_cl = interpolate.interp1d(aoa[:,0], stalled_lift_coefficient,axis=0,
+        #                                    kind='linear')
     def relative_velocity(self,vel_sys4,induced_wind,radial_position):
         '''This function determines the realtive velocity on the element chosen
         on the blade in system 4 (blade).
@@ -46,10 +63,7 @@ class LoadsCalculation():
         V_rel_z = vel_sys4[2]+induced_wind[2]
         return np.array([0, V_rel_y, V_rel_z])
     
-    def calculation_loads(self,V_rel,twist,c,thick_to_chord,aoa,
-                             lift_coefficient,drag_coefficient,separation_function,
-                             linear_lift_coefficient,stalled_lift_coefficient,   
-                             number_of_airfoils,thickness_to_chord,iteration,fs_bef,dt,t):
+    def calculation_loads(self,V_rel,twist,c,thick_to_chord,iteration,fs_bef,dt,t):
         '''This function calculates the lift, drag, tangential force, and normal
         force for each element on the blade. The calculation is done by interpolating
         the angle of attack between the data given in the uploaded files.
@@ -110,35 +124,30 @@ class LoadsCalculation():
         phi = np.arctan2(V_rel[2],-V_rel[1]) #flow angle
         local_pitch = twist+self.TIP_PITCH[iteration] 
         angle_attack = phi-local_pitch
-        
-        # interpolating
+        # interpolating with scipy
         #clthick = np.zeros((number_of_airfoils,1)) #lift coefficient
-        cdthick = np.zeros((number_of_airfoils,1)) #drag coefficient
-        fs_thick = np.zeros((number_of_airfoils,1)) #separation function
-        linear_cl_thick = np.zeros((number_of_airfoils,1)) #linear lift coefficient
-        stalled_cl_thick = np.zeros((number_of_airfoils,1)) #stalled lift coefficient
-        for kk in range(0,number_of_airfoils):
-            #clthick[kk] = interpolate.interp1d(aoa[:,kk], lift_coefficient[:,kk],
-            #                                   kind='linear')(np.rad2deg(angle_attack))
-            cdthick[kk] = interpolate.interp1d(aoa[:,kk], drag_coefficient[:,kk],
-                                               kind='linear')(np.rad2deg(angle_attack))
-            fs_thick[kk] = interpolate.interp1d(aoa[:,kk], separation_function[:,kk],
-                                               kind='linear')(np.rad2deg(angle_attack))
-            linear_cl_thick[kk] = interpolate.interp1d(aoa[:,kk], linear_lift_coefficient[:,kk],
-                                               kind='linear')(np.rad2deg(angle_attack))
-            stalled_cl_thick[kk] = interpolate.interp1d(aoa[:,kk], stalled_lift_coefficient[:,kk],
-                                               kind='linear')(np.rad2deg(angle_attack))
-        #clift = interpolate.interp1d(thickness_to_chord,clthick[:,0], 
-        #                             kind='linear')(thick_to_chord)
-        cdrag = interpolate.interp1d(thickness_to_chord,cdthick[:,0], 
-                                     kind='linear')(thick_to_chord)
-        fs_stat = interpolate.interp1d(thickness_to_chord,fs_thick[:,0], 
-                                     kind='linear')(thick_to_chord)
-        linear_clift = interpolate.interp1d(thickness_to_chord,linear_cl_thick[:,0], 
-                                     kind='linear')(thick_to_chord)
-        stalled_clift = interpolate.interp1d(thickness_to_chord,stalled_cl_thick[:,0], 
-                                     kind='linear')(thick_to_chord)
-        # calculate dynamic stall
+        # cdthick = self.interp_cd(np.rad2deg(angle_attack)) #drag coefficient
+        # fs_thick = self.interp_fs(np.rad2deg(angle_attack)) #separation function
+        # linear_cl_thick = self.interp_linear_cl(np.rad2deg(angle_attack))#linear lift coefficient
+        # stalled_cl_thick = self.interp_stalled_cl(np.rad2deg(angle_attack)) #stalled lift coefficient
+        
+        #interpolating with numpy
+        cdthick = np.empty(self.number_of_airfoils)
+        fs_thick = np.empty(self.number_of_airfoils)
+        linear_cl_thick  = np.empty(self.number_of_airfoils)
+        stalled_cl_thick = np.empty(self.number_of_airfoils)
+        for ii in range(self.number_of_airfoils):
+            cdthick[ii] = np.interp(np.rad2deg(angle_attack),self.aoa, self.drag_coefficient[:,ii])
+            fs_thick[ii] = np.interp(np.rad2deg(angle_attack),self.aoa, self.separation_function[:,ii])
+            linear_cl_thick[ii] = np.interp(np.rad2deg(angle_attack),self.aoa, self.linear_lift_coefficient[:,ii])
+            stalled_cl_thick[ii] = np.interp(np.rad2deg(angle_attack),self.aoa, self.stalled_lift_coefficient[:,ii])
+        # In the interpolation function, I have to reverse the arrays because
+        # np.intepr wants the array to be with increasing values
+        cdrag = np.interp(thick_to_chord,self.thickness_to_chord[-1::-1],cdthick[-1::-1])
+        fs_stat = np.interp(thick_to_chord,self.thickness_to_chord[-1::-1],fs_thick[-1::-1])
+        linear_clift = np.interp(thick_to_chord,self.thickness_to_chord[-1::-1],linear_cl_thick[-1::-1])
+        stalled_clift = np.interp(thick_to_chord,self.thickness_to_chord[-1::-1],stalled_cl_thick[-1::-1])
+        
         tau = 4*c/abs_V_rel
         fs_now = fs_stat+(fs_bef-fs_stat)*np.exp(-dt/tau)
         clift_dyn_stall = fs_now*linear_clift+(1-fs_now)*stalled_clift
