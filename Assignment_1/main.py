@@ -4,6 +4,10 @@ of classes.
 '''
 
 #%% IMPORT PACKAGES
+import os
+
+# Imposta la cartella di lavoro alla cartella contenente questo file
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,11 +19,14 @@ from undisturbed_wind_speed import UndisturbedWindSpeed
 from induced_wind import InducedWind
 from loads_calculation import LoadsCalculation
 from saving_data import SavingData
+from adding_turbulence import AddingTurbulence
+import os
+
 #%% plot commands
 start_time = tm.perf_counter()
 
 #size
-mpl.rcParams['figure.figsize'] = (12,8)
+mpl.rcParams['figure.figsize'] = (16,8)
 
 #font size of label, title, and legend
 mpl.rcParams['font.size'] = 25
@@ -84,7 +91,11 @@ if __name__ == "__main__":
     aoa,lift_coefficient,drag_coefficient,separation_function,linear_lift_coefficient,\
            stalled_lift_coefficient,radius = DATA.storing_data()
     thickness_to_chord = np.array((100, 60, 48, 36, 30.1, 24.1))
-
+    
+    #%% turbulence creation
+    turb_file = r'C:\COPENAGHEN PRIMO ANNO\AEROELASTICITY\exercises\turbulence_generator\sim1.bin'
+    ADDING_TURBULENCE = AddingTurbulence(dt, time_steps, ws_hub_height)
+    u_turb_plane,x_turb,y_turb = ADDING_TURBULENCE.calculating_turbulence_field(turb_file)
     #%% vector inizialization
     position_blades = np.zeros((time_steps,B,3)) #position of the considered point
                                                  #in space
@@ -95,6 +106,7 @@ if __name__ == "__main__":
     W_induced_intermediate = np.zeros((time_steps,B,radius.shape[0],3)) #intermediate induced
                                                                         #velocity used for
                                                                         #dynamic wake calculation
+    U_turb = np.zeros((time_steps,B,radius.shape[0],3))                                                                    
     W_induced = np.zeros((time_steps,B,radius.shape[0],3)) #induced wind velocity
     f_s = np.zeros((time_steps,B,radius.shape[0])) #separation function for dynamic wake
     azimuthal_angle_blade1 = np.zeros((time_steps,1)) #angle position of blade 1
@@ -102,16 +114,15 @@ if __name__ == "__main__":
     theta_blade = np.zeros((B,1)) #angle position of the three blades
     final_tangential_force = np.zeros((time_steps,radius.shape[0],B)) #p_t
     final_normal_force = np.zeros((time_steps,radius.shape[0],B)) #p_n
-    torque = np.zeros((time_steps,1)) #torque over time
-    power = np.zeros((time_steps,1)) #power over time
-    thrust = np.zeros((time_steps,1)) #thrust over time
-    
+    torque = np.zeros((time_steps)) #torque over time
+    power = np.zeros((time_steps)) #power over time
+    thrust = np.zeros((time_steps)) #thrust over time
+    pz_blade1_turb = np.zeros((time_steps))
     #initialization of axial and tangential induction factors
     a_values = np.zeros((time_steps,1)) #axial induction factor
     a_mean = 0 #initialization if a global induction factor is chosen
     
-    #%% resolution
-    # class initialization
+    #%% class initialization
     TRANSFORMATION_MATR = TransformationMatrixes(theta_cone,theta_yaw,theta_pitch)
     POSITION = PositionDefinition(TRANSFORMATION_MATR,omega,H,L_s)
     UNDISTURBED_WIND = UndisturbedWindSpeed(TRANSFORMATION_MATR,H,shear_exponent)
@@ -123,7 +134,7 @@ if __name__ == "__main__":
                              TIP_PITCH,omega,theta_cone,theta_yaw,theta_pitch,
                              H,L_s,R,shear_exponent)
     
-#time loop
+    #%% time loop
     for ii in range(0,time_steps):
             #initialize p_n and p_t for each time step
             tangential_force = np.zeros((radius.shape[0],B))
@@ -147,9 +158,12 @@ if __name__ == "__main__":
                         position_blades[ii,jj,:],a_1,a_2,a_12,a_23,a_34,a_14,a_21,\
                                   a_41 = POSITION.final_calculation_position\
                                          (theta_blade_considered, radius[kk])
+                        U_turb[ii,jj,kk,:] = ADDING_TURBULENCE.interpolating_turbulence\
+                                            (ii, position_blades[ii,jj,0],\
+                                            position_blades[ii,jj,1])
                         V0_system1[ii,jj,:] = UNDISTURBED_WIND.velocity_system1(
                                                         position_blades[ii,jj,:],\
-                                                        ws_hub_height,a_x)
+                                                        ws_hub_height,a_x)+U_turb[ii,jj,kk,:]
                         V0_system4[ii,jj,:] = UNDISTURBED_WIND.velocity_system4(\
                                                         V0_system1[ii,jj,:])
                         
@@ -191,12 +205,12 @@ if __name__ == "__main__":
                         if third_point:
                             #if we considered also the first part, there would be
                             #a long unsteady period.
-                            if ii < 10:
+                            if time < 2:
                                 tau_1,tau_2 = (1e-3,1e-3)
                             else:
                                 tau_1,tau_2 = INDUCED_WIND.time_constants_induced_wind(\
                                                         a,ws_hub_height,radius[kk])
-                            W_induced[ii,jj,kk,:],W_induced_intermediate[ii,jj,kk,:] = INDUCED_WIND.dynamic_wake\
+                                W_induced[ii,jj,kk,:],W_induced_intermediate[ii,jj,kk,:] = INDUCED_WIND.dynamic_wake\
                                                         (W_induced_quasi_steady[ii,jj,kk,:],\
                                                         W_induced_quasi_steady[ii-1,jj,kk,:],\
                                                         W_induced_intermediate[ii-1,jj,kk,:],\
@@ -211,6 +225,7 @@ if __name__ == "__main__":
                 a_values[ii] = a_mean
             
             #save the p_n, p_t, torque, power, trust array for the current time step
+            pz_blade1_turb[ii] = normal_force[8,0]
             final_tangential_force[ii,:,:] = tangential_force 
             final_normal_force[ii,:,:] = normal_force 
             torque[ii] = np.trapezoid(radius*tangential_force[:,0],radius)+\
@@ -221,33 +236,49 @@ if __name__ == "__main__":
                          np.trapezoid(normal_force[:,1],radius)+\
                          np.trapezoid(normal_force[:,2],radius)
 
+#%% check spectrum
+f_pz,PSD_pz = ADDING_TURBULENCE.calculating_psd(pz_blade1_turb,pwelch=True)
+f_thrust,PSD_thrust = ADDING_TURBULENCE.calculating_psd(thrust,pwelch=True)
 #%% FIGURES
 colors = ['#377eb8','#e41a1c']
+# fig = plt.figure(1)
+# plt.plot(time_array,power*1e-6,linestyle='--',label='$Power$',color = colors[0])
+# plt.plot(time_array,thrust*1e-6,linestyle='--',label='$Thrust$',color = colors[1])
+# plt.legend(loc="upper right",frameon= False)
+# plt.xlabel(r'$t\: [s]$')
+# plt.ylabel(r'$P\:&\:T\:[MW\:&\:MN]$')
+# plt.xlim([time_array[0], time_array[-1]])
+# plt.minorticks_on()
+# plt.tick_params(direction='in',right=True,top =True)
+# plt.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
+# plt.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
+# plt.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
+
+# fig = plt.figure(2)
+# plt.plot(radius,final_tangential_force[-1,:,0],linestyle='--',label='$P_y$',color = colors[0])
+# plt.plot(radius,final_normal_force[-1,:,0],linestyle='--',label='$P_z$',color = colors[1])
+# plt.legend(loc="upper left",frameon= False )
+# plt.xlabel(r'$r\: [m]$')
+# plt.ylabel(r'$p_y\:&\:p_z\:[N]$')
+# plt.xlim([radius[0], radius[-1]])
+# plt.minorticks_on()
+# plt.tick_params(direction='in',right=True,top =True)
+# plt.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
+# plt.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
+# plt.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
+
 fig = plt.figure(1)
-plt.plot(time_array,power*1e-6,linestyle='--',label='$Power$',color = colors[0])
-plt.plot(time_array,thrust*1e-6,linestyle='--',label='$Thrust$',color = colors[1])
-plt.legend(loc="upper right",frameon= False)
-plt.xlabel(r'$t\: [s]$')
-plt.ylabel(r'$P\:&\:T\:[MW\:&\:MN]$')
-plt.xlim([time_array[0], time_array[-1]])
-plt.minorticks_on()
-plt.tick_params(direction='in',right=True,top =True)
-plt.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
-plt.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
-plt.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
+plt.plot(f_pz*2*np.pi/omega,PSD_pz,linestyle='-',label=r'$P_z$',color = colors[0])
+plt.xlabel(r'$f*2*\pi/\omega$')
+plt.ylabel(r'$PSD$')
+plt.xlim([time_array[0], time_array[35]])
 
 fig = plt.figure(2)
-plt.plot(radius,final_tangential_force[-1,:,0],linestyle='--',label='$P_y$',color = colors[0])
-plt.plot(radius,final_normal_force[-1,:,0],linestyle='--',label='$P_z$',color = colors[1])
-plt.legend(loc="upper left",frameon= False )
-plt.xlabel(r'$r\: [m]$')
-plt.ylabel(r'$p_y\:&\:p_z\:[N]$')
-plt.xlim([radius[0], radius[-1]])
-plt.minorticks_on()
-plt.tick_params(direction='in',right=True,top =True)
-plt.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
-plt.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
-plt.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
+plt.plot(f_thrust*2*np.pi/omega,PSD_thrust,linestyle='-',label=r'$PSD\:Thrust$',color = colors[0])
+plt.xlabel(r'$f*2*\pi/\omega$')
+plt.ylabel(r'$PSD$')
+plt.xlim([time_array[0], time_array[35]])
+plt.title('Thrust\'s PSD')
 
 #calculating the execution time of the script
 end_time = tm.perf_counter()
