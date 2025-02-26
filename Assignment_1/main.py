@@ -69,7 +69,7 @@ if __name__ == "__main__":
     dt = d_angle/omega            # [s] time step for the simulation
     TOTAL_TIME = 180              # [s] total time of the simulation
     time_steps = int(np.floor(TOTAL_TIME/dt))
-    shear_exponent = 0            # [-] velocity profile's shear exponent
+    shear_exponent = 0.2            # [-] velocity profile's shear exponent
     ws_hub_height = 8             # [m/s] hub height wind speed
     a_x = 0                       # [m] tower's radius
     TIP_PITCH = np.zeros(time_steps)  # [rad] tip pitch
@@ -78,10 +78,10 @@ if __name__ == "__main__":
     # radial position I put True, otherwise to use a mean value from the entire
     # turbine I switch to False
     local_a_calculation = True    # local calculation of axial induction factor
-    
     # For the third question, the pitch angle changes from 0 to 2 degrees for 
     # a certain period to see the reaction's delay in the power.
-    third_point = False
+    third_point = False #want to have pitch changing
+    four_point = True #want to add turbulence to the wind speed
     if third_point:
         TIP_PITCH[(np.arange(time_steps)*dt>=100) & (np.arange(time_steps)*dt <= 150)] = np.deg2rad(2)
     
@@ -93,9 +93,16 @@ if __name__ == "__main__":
     thickness_to_chord = np.array((100, 60, 48, 36, 30.1, 24.1))
     
     #%% turbulence creation
-    turb_file = r'C:\COPENAGHEN PRIMO ANNO\AEROELASTICITY\exercises\turbulence_generator\sim1.bin'
+    # the turbulence files are created with the Mann model 
+    turb_file_1 = r'C:\COPENAGHEN PRIMO ANNO\AEROELASTICITY\exercises\turbulence_generator\sim1.bin'
+    turb_file_2 = r'C:\COPENAGHEN PRIMO ANNO\AEROELASTICITY\exercises\turbulence_generator\sim2.bin'
+    turb_file_3 = r'C:\COPENAGHEN PRIMO ANNO\AEROELASTICITY\exercises\turbulence_generator\sim3.bin'
     ADDING_TURBULENCE = AddingTurbulence(dt, time_steps, ws_hub_height)
-    u_turb_plane,x_turb,y_turb = ADDING_TURBULENCE.calculating_turbulence_field(turb_file)
+    
+    # saving the streamwise, normal and vertical turbulence
+    u_turb_plane,x_turb,y_turb = ADDING_TURBULENCE.calculating_turbulence_field(turb_file_1)
+    v_turb_plane,x_turb,y_turb = ADDING_TURBULENCE.calculating_turbulence_field(turb_file_2)
+    w_turb_plane,x_turb,y_turb = ADDING_TURBULENCE.calculating_turbulence_field(turb_file_3)
     #%% vector inizialization
     position_blades = np.zeros((time_steps,B,3)) #position of the considered point
                                                  #in space
@@ -106,7 +113,7 @@ if __name__ == "__main__":
     W_induced_intermediate = np.zeros((time_steps,B,radius.shape[0],3)) #intermediate induced
                                                                         #velocity used for
                                                                         #dynamic wake calculation
-    U_turb = np.zeros((time_steps,B,radius.shape[0],3))                                                                    
+    U_turb = np.zeros((time_steps,B,radius.shape[0],3)) # turbulence velocity                                                                                                                              
     W_induced = np.zeros((time_steps,B,radius.shape[0],3)) #induced wind velocity
     f_s = np.zeros((time_steps,B,radius.shape[0])) #separation function for dynamic wake
     azimuthal_angle_blade1 = np.zeros((time_steps,1)) #angle position of blade 1
@@ -158,12 +165,26 @@ if __name__ == "__main__":
                         position_blades[ii,jj,:],a_1,a_2,a_12,a_23,a_34,a_14,a_21,\
                                   a_41 = POSITION.final_calculation_position\
                                          (theta_blade_considered, radius[kk])
-                        U_turb[ii,jj,kk,:] = ADDING_TURBULENCE.interpolating_turbulence\
-                                            (ii, position_blades[ii,jj,0],\
-                                            position_blades[ii,jj,1])
-                        V0_system1[ii,jj,:] = UNDISTURBED_WIND.velocity_system1(
+                        if four_point: # I add the turbulence to the V0 in system 1
+                            # interpolating the position of blade's element with
+                            # the turbulence plane for each component
+                            U_turb[ii,jj,kk,0] = ADDING_TURBULENCE.interpolating_turbulence\
+                                                (ii, position_blades[ii,jj,0],\
+                                                position_blades[ii,jj,1],u_turb_plane)
+                            U_turb[ii,jj,kk,1] = ADDING_TURBULENCE.interpolating_turbulence\
+                                                (ii, position_blades[ii,jj,0],\
+                                                position_blades[ii,jj,1],v_turb_plane)
+                            U_turb[ii,jj,kk,2] = ADDING_TURBULENCE.interpolating_turbulence\
+                                                (ii, position_blades[ii,jj,0],\
+                                                position_blades[ii,jj,1],w_turb_plane)
+                            
+                            V0_system1[ii,jj,:] = UNDISTURBED_WIND.velocity_system1(
                                                         position_blades[ii,jj,:],\
                                                         ws_hub_height,a_x)+U_turb[ii,jj,kk,:]
+                        else:
+                            V0_system1[ii,jj,:] = UNDISTURBED_WIND.velocity_system1(
+                                                        position_blades[ii,jj,:],\
+                                                        ws_hub_height,a_x)
                         V0_system4[ii,jj,:] = UNDISTURBED_WIND.velocity_system4(\
                                                         V0_system1[ii,jj,:])
                         
@@ -225,7 +246,7 @@ if __name__ == "__main__":
                 a_values[ii] = a_mean
             
             #save the p_n, p_t, torque, power, trust array for the current time step
-            pz_blade1_turb[ii] = normal_force[8,0]
+            pz_blade1_turb[ii] = tangential_force[8,0]
             final_tangential_force[ii,:,:] = tangential_force 
             final_normal_force[ii,:,:] = normal_force 
             torque[ii] = np.trapezoid(radius*tangential_force[:,0],radius)+\
@@ -273,13 +294,17 @@ plt.xlabel(r'$f*2*\pi/\omega$')
 plt.ylabel(r'$PSD$')
 plt.xlim([time_array[0], time_array[35]])
 
-fig = plt.figure(2)
-plt.plot(f_thrust*2*np.pi/omega,PSD_thrust,linestyle='-',label=r'$PSD\:Thrust$',color = colors[0])
-plt.xlabel(r'$f*2*\pi/\omega$')
-plt.ylabel(r'$PSD$')
-plt.xlim([time_array[0], time_array[35]])
-plt.title('Thrust\'s PSD')
+# fig = plt.figure(2)
+# plt.plot(f_thrust*2*np.pi/omega,PSD_thrust,linestyle='-',label=r'$PSD\:Thrust$',color = colors[0])
+# plt.xlabel(r'$f*2*\pi/\omega$')
+# plt.ylabel(r'$PSD$')
+# plt.xlim([time_array[0], time_array[35]])
+# plt.title('Thrust\'s PSD')
 
+fig = plt.figure(3)
+plt.plot(time_array[10:],pz_blade1_turb[10:],linestyle='-',label=r'$P_z$',color = colors[0])
+plt.xlabel(r'$t\:[s]$')
+plt.ylabel(r'$p_y$')
 #calculating the execution time of the script
 end_time = tm.perf_counter()
 execution_time = end_time-start_time
