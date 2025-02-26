@@ -23,7 +23,7 @@ class AddingTurbulence():
         self.z_turb = np.arange(0,self.n1)*self.deltax
     
     def smoothing_spectra(self,f,raw_spectra,n_decade=15):
-    '''This function smoothes the signal of the raw spectrum.
+        '''This function smoothes the signal of the raw spectrum.
 
         Parameters:
             f : 
@@ -97,41 +97,41 @@ class AddingTurbulence():
         return data.reshape(nx, ny * nz)
     
     def calculating_turbulence_field(self,filename):
-    '''This function reshape the turbulence field from 2d to 3d
-    
-    Parameters:
-        filename:
-            name of the turbulence data\'s file
-    Return:
-        uplane:
-            reshaped turbulence field
-        x_turb:
-            coordinates in the x direction (vertical)
-        y_turb:
-            coordinates in the y direction (normal)
-    '''
+        '''This function reshape the turbulence field from 2d to 3d
+        
+        Parameters:
+            filename:
+                name of the turbulence data\'s file
+        Return:
+            uplane:
+                reshaped turbulence field
+            x_turb:
+                coordinates in the x direction (vertical)
+            y_turb:
+                coordinates in the y direction (normal)
+        '''
         u=AddingTurbulence.load(self,filename,  N=(self.n1, self.n2, self.n3))
         uplane= np.reshape(u, (self.n1, self.n2, self.n3))
         return uplane,self.x_turb,self.y_turb
     
     def calculating_psd(self,input_data,pwelch):
-    '''This function determines the power spectra density of a signal in the 
-    frequency domain. The latter can be done with either the welch function or
-    an implemented one.
-    
-    Parameters:
-        input_data:
-            data of which you want to determine the spectrum
-        pwelch:
-            boolean value. If True, the spectrum is determined with pwelch, 
-            otherwhise it uses the other one
-    
-    Returns:
-        f:
-            frequency of the spectrum
-        S:
-            spectrum of the signal
-    '''
+        '''This function determines the power spectra density of a signal in the 
+        frequency domain. The latter can be done with either the welch function or
+        an implemented one.
+        
+        Parameters:
+            input_data:
+                data of which you want to determine the spectrum
+            pwelch:
+                boolean value. If True, the spectrum is determined with pwelch, 
+                otherwhise it uses the other one
+        
+        Returns:
+            f:
+                frequency of the spectrum
+            S:
+                spectrum of the signal
+        '''
         time=np.arange(self.deltat, self.n1*self.deltat+self.deltat, self.deltat)
         n = len(input_data)
         fs=1/(time[1]-time[0])
@@ -148,24 +148,24 @@ class AddingTurbulence():
         return f,S
         
     def interpolating_turbulence(self,time,x_point,y_point,velocity):
-    '''This function interpolates the point of an element in the turbulence field
-    to determine the turbulence component in that point.
-        
-        Parameters:
-
-            time : 
-                time iteration .
-            x_point : 
-                x coordinate of the point.
-            y_point : 
-                y coordinate of the point.
-            velocity : 
-                turbulence field at that time iteration.
-
-        Returns:
-            interp_func:
-                value of the turbulence component in the wanted point
-
+        '''This function interpolates the point of an element in the turbulence field
+        to determine the turbulence component in that point.
+            
+            Parameters:
+    
+                time : 
+                    time iteration .
+                x_point : 
+                    x coordinate of the point.
+                y_point : 
+                    y coordinate of the point.
+                velocity : 
+                    turbulence field at that time iteration.
+    
+            Returns:
+                interp_func:
+                    value of the turbulence component in the wanted point
+    
         '''    
         interp_func = interpolate.interpn((self.y_turb, self.x_turb),velocity[time,...],\
                                           np.array([y_point,x_point]),method='linear')

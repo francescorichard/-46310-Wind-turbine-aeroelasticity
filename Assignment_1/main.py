@@ -69,7 +69,7 @@ if __name__ == "__main__":
     dt = d_angle/omega            # [s] time step for the simulation
     TOTAL_TIME = 180              # [s] total time of the simulation
     time_steps = int(np.floor(TOTAL_TIME/dt))
-    shear_exponent = 0.2            # [-] velocity profile's shear exponent
+    shear_exponent = 0           # [-] velocity profile's shear exponent
     ws_hub_height = 8             # [m/s] hub height wind speed
     a_x = 0                       # [m] tower's radius
     TIP_PITCH = np.zeros(time_steps)  # [rad] tip pitch
@@ -81,7 +81,8 @@ if __name__ == "__main__":
     # For the third question, the pitch angle changes from 0 to 2 degrees for 
     # a certain period to see the reaction's delay in the power.
     third_point = False #want to have pitch changing
-    four_point = True #want to add turbulence to the wind speed
+    stall_model = False
+    adding_turbulence = True #want to add turbulence to the wind speed
     if third_point:
         TIP_PITCH[(np.arange(time_steps)*dt>=100) & (np.arange(time_steps)*dt <= 150)] = np.deg2rad(2)
     
@@ -165,7 +166,7 @@ if __name__ == "__main__":
                         position_blades[ii,jj,:],a_1,a_2,a_12,a_23,a_34,a_14,a_21,\
                                   a_41 = POSITION.final_calculation_position\
                                          (theta_blade_considered, radius[kk])
-                        if four_point: # I add the turbulence to the V0 in system 1
+                        if adding_turbulence: # I add the turbulence to the V0 in system 1
                             # interpolating the position of blade's element with
                             # the turbulence plane for each component
                             U_turb[ii,jj,kk,0] = ADDING_TURBULENCE.interpolating_turbulence\
@@ -203,7 +204,7 @@ if __name__ == "__main__":
                             W_z = 0
                             lift,phi,normal_force[kk,jj],tangential_force[kk,jj],f_s[ii,jj,kk] = \
                                 LOADS_CALCULATION.calculation_loads(V_rel,twist, chord,\
-                                                     thick_to_chord,ii,0,dt,time)
+                                                     thick_to_chord,ii,0,dt,time,stall_model)
                         else:
                             V_rel = LOADS_CALCULATION.relative_velocity(V0_system4\
                                                   [ii,jj,:], W_induced[ii-1,jj,kk,:],\
@@ -211,7 +212,8 @@ if __name__ == "__main__":
                             W_z = W_induced[ii-1,jj,kk,2]
                             lift,phi,normal_force[kk,jj],tangential_force[kk,jj],f_s[ii,jj,kk] = \
                                 LOADS_CALCULATION.calculation_loads(V_rel,twist, chord,\
-                                                     thick_to_chord,ii,f_s[ii-1,jj,kk],dt,time)
+                                                     thick_to_chord,ii,f_s[ii-1,jj,kk],dt,time,\
+                                                     stall_model)
                                     
                         #induced wind calculation with dynamic wake
                         F = INDUCED_WIND.tip_loss_correction(radius[kk], phi)
@@ -222,23 +224,18 @@ if __name__ == "__main__":
                         W_induced_quasi_steady[ii,jj,kk,:] = INDUCED_WIND.induced_wind_quasi_steady\
                                                 (ii,lift,phi, radius[kk], F, induced_denominator)
                         
-                        #we consider the dynamic wake model just in the third point
-                        if third_point:
-                            #if we considered also the first part, there would be
-                            #a long unsteady period.
-                            if time < 2:
-                                tau_1,tau_2 = (1e-3,1e-3)
-                            else:
-                                tau_1,tau_2 = INDUCED_WIND.time_constants_induced_wind(\
-                                                        a,ws_hub_height,radius[kk])
-                                W_induced[ii,jj,kk,:],W_induced_intermediate[ii,jj,kk,:] = INDUCED_WIND.dynamic_wake\
-                                                        (W_induced_quasi_steady[ii,jj,kk,:],\
-                                                        W_induced_quasi_steady[ii-1,jj,kk,:],\
-                                                        W_induced_intermediate[ii-1,jj,kk,:],\
-                                                        W_induced[ii-1,jj,kk,:],
-                                                        tau_1,tau_2,dt)
+
+                        if time < 5:
+                            tau_1,tau_2 = (1e-3,1e-3)
                         else:
-                            W_induced[ii,jj,kk,:] =  W_induced_quasi_steady[ii,jj,kk,:]
+                            tau_1,tau_2 = INDUCED_WIND.time_constants_induced_wind(\
+                                                    a,ws_hub_height,radius[kk])
+                        W_induced[ii,jj,kk,:],W_induced_intermediate[ii,jj,kk,:] = INDUCED_WIND.dynamic_wake\
+                                                    (W_induced_quasi_steady[ii,jj,kk,:],\
+                                                    W_induced_quasi_steady[ii-1,jj,kk,:],\
+                                                    W_induced_intermediate[ii-1,jj,kk,:],\
+                                                    W_induced[ii-1,jj,kk,:],
+                                                    tau_1,tau_2,dt)
                             
             # mean value of a on the blades (calculated as the value at 0.7*R).
             if ii!=0:
@@ -246,7 +243,7 @@ if __name__ == "__main__":
                 a_values[ii] = a_mean
             
             #save the p_n, p_t, torque, power, trust array for the current time step
-            pz_blade1_turb[ii] = tangential_force[8,0]
+            pz_blade1_turb[ii] = normal_force[8,0]
             final_tangential_force[ii,:,:] = tangential_force 
             final_normal_force[ii,:,:] = normal_force 
             torque[ii] = np.trapezoid(radius*tangential_force[:,0],radius)+\
@@ -262,7 +259,9 @@ f_pz,PSD_pz = ADDING_TURBULENCE.calculating_psd(pz_blade1_turb,pwelch=True)
 f_thrust,PSD_thrust = ADDING_TURBULENCE.calculating_psd(thrust,pwelch=True)
 #%% FIGURES
 colors = ['#377eb8','#e41a1c']
-# fig = plt.figure(1)
+
+# Power and Thrust over time
+# fig = plt.figure()
 # plt.plot(time_array,power*1e-6,linestyle='--',label='$Power$',color = colors[0])
 # plt.plot(time_array,thrust*1e-6,linestyle='--',label='$Thrust$',color = colors[1])
 # plt.legend(loc="upper right",frameon= False)
@@ -275,7 +274,8 @@ colors = ['#377eb8','#e41a1c']
 # plt.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
 # plt.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
 
-# fig = plt.figure(2)
+# Tangential and normal loads at the last iteration
+# fig = plt.figure()
 # plt.plot(radius,final_tangential_force[-1,:,0],linestyle='--',label='$P_y$',color = colors[0])
 # plt.plot(radius,final_normal_force[-1,:,0],linestyle='--',label='$P_z$',color = colors[1])
 # plt.legend(loc="upper left",frameon= False )
@@ -288,24 +288,60 @@ colors = ['#377eb8','#e41a1c']
 # plt.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
 # plt.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
 
-fig = plt.figure(1)
-plt.plot(f_pz*2*np.pi/omega,PSD_pz,linestyle='-',label=r'$P_z$',color = colors[0])
-plt.xlabel(r'$f*2*\pi/\omega$')
-plt.ylabel(r'$PSD$')
-plt.xlim([time_array[0], time_array[35]])
-
-# fig = plt.figure(2)
-# plt.plot(f_thrust*2*np.pi/omega,PSD_thrust,linestyle='-',label=r'$PSD\:Thrust$',color = colors[0])
+# PSD of normal loads at 65.5 m for blade number 1
+# fig = plt.figure()
+# plt.plot(f_pz*2*np.pi/omega,PSD_pz,linestyle='-',color = 'k')
 # plt.xlabel(r'$f*2*\pi/\omega$')
 # plt.ylabel(r'$PSD$')
 # plt.xlim([time_array[0], time_array[35]])
-# plt.title('Thrust\'s PSD')
+# plt.minorticks_on()
+# plt.tick_params(direction='in',right=True,top =True)
+# plt.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
+# plt.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
+# plt.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
 
-fig = plt.figure(3)
-plt.plot(time_array[10:],pz_blade1_turb[10:],linestyle='-',label=r'$P_z$',color = colors[0])
-plt.xlabel(r'$t\:[s]$')
-plt.ylabel(r'$p_y$')
-#calculating the execution time of the script
+# PSD of total thrust 
+# fig = plt.figure()
+# plt.plot(f_thrust*2*np.pi/omega,PSD_thrust,linestyle='-',color = 'k')
+# plt.xlabel(r'$f*2*\pi/\omega$')
+# plt.ylabel(r'$PSD$')
+# plt.xlim([time_array[0], time_array[35]])
+# plt.minorticks_on()
+# plt.tick_params(direction='in',right=True,top =True)
+# plt.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
+# plt.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
+# plt.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
+
+# normal loads at 65.5 m for blade number 1 over time
+# fig = plt.figure()
+# plt.plot(time_array[10:],pz_blade1_turb[10:],linestyle='-',color = 'k')
+# plt.xlabel(r'$t\:[s]$')
+# plt.ylabel(r'$p_z$')
+# plt.minorticks_on()
+# plt.tick_params(direction='in',right=True,top =True)
+# plt.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
+# plt.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
+# plt.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
+
+# turbulent signal at 65.5 m for blade number 1 over time
+# fig,axs = plt.subplots(3,1,sharex=True)
+# axs[0].plot(time_array,U_turb[:,0,8,0],linestyle='-',color = 'k')
+# axs[1].plot(time_array,U_turb[:,0,8,1],linestyle='-',color = 'k')
+# axs[2].plot(time_array,U_turb[:,0,8,2],linestyle='-',color = 'k')
+# axs[0].set_title('Streamwise fluctuations')
+# axs[1].set_title('Transverse fluctuations')
+# axs[2].set_title('Vertical fluctuations')
+# axs[2].set_xlabel(r'$t\: [s]$')
+# axs[2].set_xlim([time_array[0], time_array[-1]])
+# axs[2].minorticks_on()
+# axs[2].tick_params(direction='in',right=True,top =True)
+# axs[2].tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
+# axs[2].tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
+# axs[2].tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
+# fig.suptitle('Turbulent Velocity for B=1 and R=65.75 m')
+
+#%% calculating the execution time of the script
+
 end_time = tm.perf_counter()
 execution_time = end_time-start_time
 print(f'The program required {execution_time:.1f} s')

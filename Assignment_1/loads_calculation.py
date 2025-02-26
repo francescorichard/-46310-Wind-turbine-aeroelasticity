@@ -63,7 +63,8 @@ class LoadsCalculation():
         V_rel_z = vel_sys4[2]+induced_wind[2]
         return np.array([0, V_rel_y, V_rel_z])
     
-    def calculation_loads(self,V_rel,twist,c,thick_to_chord,iteration,fs_bef,dt,t):
+    def calculation_loads(self,V_rel,twist,c,thick_to_chord,iteration,fs_bef,dt,t,\
+                          stall_model):
         '''This function calculates the lift, drag, tangential force, and normal
         force for each element on the blade. The calculation is done by interpolating
         the angle of attack between the data given in the uploaded files.
@@ -106,7 +107,10 @@ class LoadsCalculation():
         dt (float): 
             time step of the simulation
         t (float):
-            current time of the simulation 
+            current time of the simulation
+        stall_model:
+            boolean. If True, the stall model is used, otherwhise the static
+            model is used
 
         Returns:
         lift (float):
@@ -132,28 +136,34 @@ class LoadsCalculation():
         # stalled_cl_thick = self.interp_stalled_cl(np.rad2deg(angle_attack)) #stalled lift coefficient
         
         #interpolating with numpy
+        clthick = np.empty(self.number_of_airfoils)
         cdthick = np.empty(self.number_of_airfoils)
         fs_thick = np.empty(self.number_of_airfoils)
         linear_cl_thick  = np.empty(self.number_of_airfoils)
         stalled_cl_thick = np.empty(self.number_of_airfoils)
         for ii in range(self.number_of_airfoils):
+            clthick[ii] = np.interp(np.rad2deg(angle_attack),self.aoa, self.lift_coefficient[:,ii])
             cdthick[ii] = np.interp(np.rad2deg(angle_attack),self.aoa, self.drag_coefficient[:,ii])
             fs_thick[ii] = np.interp(np.rad2deg(angle_attack),self.aoa, self.separation_function[:,ii])
             linear_cl_thick[ii] = np.interp(np.rad2deg(angle_attack),self.aoa, self.linear_lift_coefficient[:,ii])
             stalled_cl_thick[ii] = np.interp(np.rad2deg(angle_attack),self.aoa, self.stalled_lift_coefficient[:,ii])
         # In the interpolation function, I have to reverse the arrays because
         # np.intepr wants the array to be with increasing values
+        clift_static = np.interp(thick_to_chord,self.thickness_to_chord[-1::-1],clthick[-1::-1])
         cdrag = np.interp(thick_to_chord,self.thickness_to_chord[-1::-1],cdthick[-1::-1])
         fs_stat = np.interp(thick_to_chord,self.thickness_to_chord[-1::-1],fs_thick[-1::-1])
         linear_clift = np.interp(thick_to_chord,self.thickness_to_chord[-1::-1],linear_cl_thick[-1::-1])
         stalled_clift = np.interp(thick_to_chord,self.thickness_to_chord[-1::-1],stalled_cl_thick[-1::-1])
         
-        tau = 4*c/abs_V_rel
-        fs_now = fs_stat+(fs_bef-fs_stat)*np.exp(-dt/tau)
-        clift_dyn_stall = fs_now*linear_clift+(1-fs_now)*stalled_clift
-        
+        if stall_model:
+            tau = 4*c/abs_V_rel
+            fs_now = fs_stat+(fs_bef-fs_stat)*np.exp(-dt/tau)
+            clift_dyn_stall = fs_now*linear_clift+(1-fs_now)*stalled_clift
+            lift = 1/2*self.RHO*c*clift_dyn_stall*abs_V_rel**2
+        else:
+            fs_now = fs_stat
+            lift = 1/2*self.RHO*c*clift_static*abs_V_rel**2
         # determining the loads on the blade's element
-        lift = 1/2*self.RHO*c*clift_dyn_stall*abs_V_rel**2
         drag = 1/2*self.RHO*c*cdrag*abs_V_rel**2
         infinitesimal_tang_force = lift*np.sin(phi)-drag*np.cos(phi)
         infinitesimal_norm_force = lift*np.cos(phi)+drag*np.sin(phi)
