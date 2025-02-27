@@ -69,7 +69,7 @@ if __name__ == "__main__":
     dt = d_angle/omega            # [s] time step for the simulation
     TOTAL_TIME = 180              # [s] total time of the simulation
     time_steps = int(np.floor(TOTAL_TIME/dt))
-    shear_exponent = 0           # [-] velocity profile's shear exponent
+    shear_exponent = 0.2           # [-] velocity profile's shear exponent
     ws_hub_height = 8             # [m/s] hub height wind speed
     a_x = 0                       # [m] tower's radius
     TIP_PITCH = np.zeros(time_steps)  # [rad] tip pitch
@@ -95,15 +95,15 @@ if __name__ == "__main__":
     
     #%% turbulence creation
     # the turbulence files are created with the Mann model 
-    turb_file_1 = r'C:\COPENAGHEN PRIMO ANNO\AEROELASTICITY\exercises\turbulence_generator\sim1.bin'
-    turb_file_2 = r'C:\COPENAGHEN PRIMO ANNO\AEROELASTICITY\exercises\turbulence_generator\sim2.bin'
-    turb_file_3 = r'C:\COPENAGHEN PRIMO ANNO\AEROELASTICITY\exercises\turbulence_generator\sim3.bin'
+    turb_file_1 = r'..\turbulence_generator\sim1.bin'
+    turb_file_2 = r'..\turbulence_generator\sim2.bin'
+    turb_file_3 = r'..\turbulence_generator\sim3.bin'
     ADDING_TURBULENCE = AddingTurbulence(dt, time_steps, ws_hub_height)
     
     # saving the streamwise, normal and vertical turbulence
-    u_turb_plane,x_turb,y_turb = ADDING_TURBULENCE.calculating_turbulence_field(turb_file_1)
+    w_turb_plane,x_turb,y_turb = ADDING_TURBULENCE.calculating_turbulence_field(turb_file_1)
     v_turb_plane,x_turb,y_turb = ADDING_TURBULENCE.calculating_turbulence_field(turb_file_2)
-    w_turb_plane,x_turb,y_turb = ADDING_TURBULENCE.calculating_turbulence_field(turb_file_3)
+    u_turb_plane,x_turb,y_turb = ADDING_TURBULENCE.calculating_turbulence_field(turb_file_3)
     #%% vector inizialization
     position_blades = np.zeros((time_steps,B,3)) #position of the considered point
                                                  #in space
@@ -169,12 +169,12 @@ if __name__ == "__main__":
                         if adding_turbulence: # I add the turbulence to the V0 in system 1
                             # interpolating the position of blade's element with
                             # the turbulence plane for each component
-                            U_turb[ii,jj,kk,0] = ADDING_TURBULENCE.interpolating_turbulence\
-                                                (ii, position_blades[ii,jj,0],\
-                                                position_blades[ii,jj,1],u_turb_plane)
-                            U_turb[ii,jj,kk,1] = ADDING_TURBULENCE.interpolating_turbulence\
-                                                (ii, position_blades[ii,jj,0],\
-                                                position_blades[ii,jj,1],v_turb_plane)
+                            # U_turb[ii,jj,kk,0] = ADDING_TURBULENCE.interpolating_turbulence\
+                            #                     (ii, position_blades[ii,jj,0],\
+                            #                     position_blades[ii,jj,1],u_turb_plane)
+                            # U_turb[ii,jj,kk,1] = ADDING_TURBULENCE.interpolating_turbulence\
+                            #                     (ii, position_blades[ii,jj,0],\
+                            #                     position_blades[ii,jj,1],v_turb_plane)
                             U_turb[ii,jj,kk,2] = ADDING_TURBULENCE.interpolating_turbulence\
                                                 (ii, position_blades[ii,jj,0],\
                                                 position_blades[ii,jj,1],w_turb_plane)
@@ -267,7 +267,8 @@ colors = ['#377eb8','#e41a1c']
 # plt.legend(loc="upper right",frameon= False)
 # plt.xlabel(r'$t\: [s]$')
 # plt.ylabel(r'$P\:&\:T\:[MW\:&\:MN]$')
-# plt.xlim([time_array[0], time_array[-1]])
+# plt.xlim([time_array[50], time_array[-1]])
+# #plt.ylim([0,15])
 # plt.minorticks_on()
 # plt.tick_params(direction='in',right=True,top =True)
 # plt.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
@@ -288,7 +289,7 @@ colors = ['#377eb8','#e41a1c']
 # plt.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
 # plt.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
 
-# PSD of normal loads at 65.5 m for blade number 1
+#PSD of normal loads at 65.5 m for blade number 1
 # fig = plt.figure()
 # plt.plot(f_pz*2*np.pi/omega,PSD_pz,linestyle='-',color = 'k')
 # plt.xlabel(r'$f*2*\pi/\omega$')
@@ -300,7 +301,7 @@ colors = ['#377eb8','#e41a1c']
 # plt.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
 # plt.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
 
-# PSD of total thrust 
+# # PSD of total thrust 
 # fig = plt.figure()
 # plt.plot(f_thrust*2*np.pi/omega,PSD_thrust,linestyle='-',color = 'k')
 # plt.xlabel(r'$f*2*\pi/\omega$')

@@ -144,7 +144,7 @@ class AddingTurbulence():
             S = (1/(fs*n))*np.abs(A)**2
             S[1:-1] *= 2
             f = fs*np.arange(0,n//2+1)/n
-            f,S = AddingTurbulence.smoothing_spectra(f,S)
+            f,S = AddingTurbulence.smoothing_spectra(self,f,S)
         return f,S
         
     def interpolating_turbulence(self,time,x_point,y_point,velocity):
