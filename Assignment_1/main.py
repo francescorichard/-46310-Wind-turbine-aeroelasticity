@@ -12,6 +12,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from sklearn.linear_model import LinearRegression
 import time as tm
 from transformation_matrixes import TransformationMatrixes
 from position_definition import PositionDefinition
@@ -20,7 +21,7 @@ from induced_wind import InducedWind
 from loads_calculation import LoadsCalculation
 from saving_data import SavingData
 from adding_turbulence import AddingTurbulence
-import os
+
 
 #%% plot commands
 start_time = tm.perf_counter()
@@ -67,11 +68,13 @@ if __name__ == "__main__":
     R = 89.15                     # [m] turbine's radius
     d_angle = np.deg2rad(6)       # [rad] angle step for the simulation
     dt = d_angle/omega            # [s] time step for the simulation
-    TOTAL_TIME = 180              # [s] total time of the simulation
+    TOTAL_TIME = 50              # [s] total time of the simulation
     time_steps = int(np.floor(TOTAL_TIME/dt))
-    shear_exponent = 0.2           # [-] velocity profile's shear exponent
+    shear_exponent = 0         # [-] velocity profile's shear exponent
     ws_hub_height = 8             # [m/s] hub height wind speed
-    a_x = 0                       # [m] tower's radius
+    heights_tow = np.array([0,11.5,23,34.5,46,57.5,69,80.5,92,103.5,115.63])
+    a_x = np.array([8.3,8.0215,7.7431,7.4646,7.1861,6.9076,6.6291,6.3507,6.0722,\
+                5.7937,5.5])      # [m] tower's radius
     TIP_PITCH = np.zeros(time_steps)  # [rad] tip pitch
     
     # If I want to determine the axial induction factor locally for each
@@ -81,11 +84,19 @@ if __name__ == "__main__":
     # For the third question, the pitch angle changes from 0 to 2 degrees for 
     # a certain period to see the reaction's delay in the power.
     third_point = False #want to have pitch changing
-    stall_model = False
-    adding_turbulence = True #want to add turbulence to the wind speed
+    stall_model = True
+    adding_turbulence = False #want to add turbulence to the wind speed
+    tower_shadow = True
     if third_point:
         TIP_PITCH[(np.arange(time_steps)*dt>=100) & (np.arange(time_steps)*dt <= 150)] = np.deg2rad(2)
     
+    #%% tower height linear regression
+    X = heights_tow.reshape(-1, 1)  # Independent variable
+    y = a_x  # Dependent variable
+    height_model = LinearRegression()
+    height_model.fit(X, y)
+    gain = height_model.coef_[0]  # slope
+    offset = height_model.intercept_  # intercept
     #%% Opening file and saving the contents
     DATA = SavingData(number_of_airfoils = 6)
     DATA.opening_files()
@@ -181,11 +192,12 @@ if __name__ == "__main__":
                             
                             V0_system1[ii,jj,:] = UNDISTURBED_WIND.velocity_system1(
                                                         position_blades[ii,jj,:],\
-                                                        ws_hub_height,a_x)+U_turb[ii,jj,kk,:]
+                                                        ws_hub_height,gain,offset,tower_shadow)\
+                                                        +U_turb[ii,jj,kk,:]
                         else:
                             V0_system1[ii,jj,:] = UNDISTURBED_WIND.velocity_system1(
                                                         position_blades[ii,jj,:],\
-                                                        ws_hub_height,a_x)
+                                                        ws_hub_height,gain,offset,tower_shadow)
                         V0_system4[ii,jj,:] = UNDISTURBED_WIND.velocity_system4(\
                                                         V0_system1[ii,jj,:])
                         
@@ -256,24 +268,24 @@ if __name__ == "__main__":
 
 #%% check spectrum
 f_pz,PSD_pz = ADDING_TURBULENCE.calculating_psd(pz_blade1_turb,pwelch=True)
-f_thrust,PSD_thrust = ADDING_TURBULENCE.calculating_psd(thrust,pwelch=True)
+f_thrust,PSD_thrust = ADDING_TURBULENCE.calculating_psd(power,pwelch=True)
 #%% FIGURES
 colors = ['#377eb8','#e41a1c']
 
 # Power and Thrust over time
-# fig = plt.figure()
-# plt.plot(time_array,power*1e-6,linestyle='--',label='$Power$',color = colors[0])
-# plt.plot(time_array,thrust*1e-6,linestyle='--',label='$Thrust$',color = colors[1])
-# plt.legend(loc="upper right",frameon= False)
-# plt.xlabel(r'$t\: [s]$')
-# plt.ylabel(r'$P\:&\:T\:[MW\:&\:MN]$')
-# plt.xlim([time_array[50], time_array[-1]])
-# #plt.ylim([0,15])
-# plt.minorticks_on()
-# plt.tick_params(direction='in',right=True,top =True)
-# plt.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
-# plt.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
-# plt.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
+fig = plt.figure()
+plt.plot(time_array,power*1e-6,linestyle='--',label='$Power$',color = colors[0])
+plt.plot(time_array,thrust*1e-6,linestyle='--',label='$Thrust$',color = colors[1])
+plt.legend(loc="upper right",frameon= False)
+plt.xlabel(r'$t\: [s]$')
+plt.ylabel(r'$P\:&\:T\:[MW\:&\:MN]$')
+plt.xlim([time_array[50], time_array[-1]])
+#plt.ylim([0,15])
+plt.minorticks_on()
+plt.tick_params(direction='in',right=True,top =True)
+plt.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
+plt.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
+plt.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
 
 # Tangential and normal loads at the last iteration
 # fig = plt.figure()

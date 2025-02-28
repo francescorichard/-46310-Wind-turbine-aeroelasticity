@@ -11,7 +11,7 @@ class UndisturbedWindSpeed():
         self.shear_exponent = shear_exponent  # [-] Velocity shear exponent
         self.TRANSFORMATION_MATR = TRANSFORMATION_MATR
 
-    def velocity_system1(self,x,ws_hub_height,a_x):
+    def velocity_system1(self,x,ws_hub_height,gain,offset,tower_shadow):
         '''This function determines the velocity of the point on the blade 
         from system 1 (ground).
         
@@ -20,12 +20,17 @@ class UndisturbedWindSpeed():
                 position of the point ins system 1
             ws_hub_height (float):
                 wind speed at hub height
-            a_x = radius of the tower at the point height
+            height_model:
+                linear regression of the radius of the tower
             
         Return:
             vel_sys1 (1-D array like): 
                 velocity of the point in system 1 (ground)
         '''
+        if tower_shadow:
+            a_x = x[0]*gain+offset
+        else:
+            a_x = 0
         v0_x = ws_hub_height*(x[0]/self.H)**self.shear_exponent
         if x[0] > self.H:
             velocity_sys1 = np.array([0, 0, v0_x])
