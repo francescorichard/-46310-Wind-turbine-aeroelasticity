@@ -1,22 +1,22 @@
 #%% IMPORT PACKAGES
 
 import numpy as np
-
+from pathlib import Path
 #%% INITIALIZE THE CLASS
 
 class SavingData():
-    def __init__(self,number_of_airfoils):
+    def __init__(self,number_of_airfoils,path):
         self.number_of_airfoils = number_of_airfoils
-
+        self.path = path / 'turbine_data'
     
     def opening_files(self):
-        self.cylinder = np.loadtxt('C:\\COPENAGHEN PRIMO ANNO\\AEROELASTICITY\\turbine_data\\cylinder_ds.txt')
-        self.FFA_W3_301 = np.loadtxt('C:\\COPENAGHEN PRIMO ANNO\\AEROELASTICITY\\turbine_data\\FFA-W3-301_ds.txt');
-        self.FFA_W3_360 = np.loadtxt('C:\\COPENAGHEN PRIMO ANNO\\AEROELASTICITY\\turbine_data\\FFA-W3-360_ds.txt');
-        self.FFA_W3_480 = np.loadtxt('C:\\COPENAGHEN PRIMO ANNO\\AEROELASTICITY\\turbine_data\\FFA-W3-480_ds.txt');
-        self.FFA_W3_600 = np.loadtxt('C:\\COPENAGHEN PRIMO ANNO\\AEROELASTICITY\\turbine_data\\FFA-W3-600_ds.txt');
-        self.FFA_W3_2411 = np.loadtxt('C:\\COPENAGHEN PRIMO ANNO\\AEROELASTICITY\\turbine_data\\FFA-W3-241_ds.txt');
-        self.blade_data = np.loadtxt('C:\\COPENAGHEN PRIMO ANNO\\AEROELASTICITY\\turbine_data\\bladedat.txt');
+        self.cylinder = np.loadtxt(self.path / 'cylinder_ds.txt')
+        self.FFA_W3_301 = np.loadtxt(self.path / 'FFA-W3-301_ds.txt');
+        self.FFA_W3_360 = np.loadtxt(self.path / 'FFA-W3-360_ds.txt');
+        self.FFA_W3_480 = np.loadtxt(self.path / 'FFA-W3-480_ds.txt');
+        self.FFA_W3_600 = np.loadtxt(self.path / 'FFA-W3-600_ds.txt');
+        self.FFA_W3_2411 = np.loadtxt(self.path / 'FFA-W3-241_ds.txt');
+        self.blade_data = np.loadtxt(self.path / 'bladedat.txt');
     
     def storing_data(self):
         radius = self.blade_data[:,0]

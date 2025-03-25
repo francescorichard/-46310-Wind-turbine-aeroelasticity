@@ -5,9 +5,9 @@ of classes.
 
 #%% IMPORT PACKAGES
 import os
-
+from pathlib import Path
 # Imposta la cartella di lavoro alla cartella contenente questo file
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+os.chdir(Path(__file__).resolve().parent)
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -23,7 +23,13 @@ from saving_data import SavingData
 from adding_turbulence import AddingTurbulence
 from pitch_controller import PitchController
 
+#%% directory commands
+current_dir = Path(__file__).resolve().parent
+current_ass_dir = current_dir.parent
+exercises_dir = current_ass_dir.parent
+aeroelasticity_dir = exercises_dir.parent 
 #%% plot commands
+
 start_time = tm.perf_counter()
 
 #size
@@ -125,7 +131,7 @@ if __name__ == "__main__":
     offset = height_model.intercept_  # intercept
     
     #%% Opening file and saving the contents
-    DATA = SavingData(number_of_airfoils = 6) # saving data class
+    DATA = SavingData(number_of_airfoils = 6,path=aeroelasticity_dir) # saving data class
     DATA.opening_files()
     aoa,lift_coefficient,drag_coefficient,separation_function,linear_lift_coefficient,\
            stalled_lift_coefficient,radius = DATA.storing_data()
