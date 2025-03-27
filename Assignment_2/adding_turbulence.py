@@ -4,23 +4,22 @@ from scipy import interpolate
 
 #%% INITIALIZE THE CLASS
 class AddingTurbulence():
-    def __init__(self,dt,time_steps,umean,n2=32,n3=32,Ly=180,Lz=180):
-        self.umean = umean
+    def __init__(self,dt,time_steps,n2=32,n3=32,Ly=180,Lz=180):
+        #self.umean = umean
         self.deltat = dt
-        self.deltax = self.deltat*self.umean
+        #self.deltax = self.deltat*self.umean
         self.n1 = 2048
         self.n2 = n2
         self.n3 = n3
-        self.Lx = int(self.deltax*(self.n1-1))
+        #self.Lx = int(self.deltax*(self.n1-1))
         self.Ly = Ly
         self.Lz = Lz
         self.deltay=self.Ly/(self.n2-1)
-        # self.deltax=self.Lx/(self.n1-1)
         self.deltaz=self.Lz/(self.n3-1)
         # self.deltat=deltax/self.umean
         self.x_turb = np.arange(0,self.n3)*self.deltaz+(119-(self.n3-1)*self.deltaz/2)
         self.y_turb = np.arange(0,self.n2)*self.deltay-((self.n2-1)*self.deltay)/2
-        self.z_turb = np.arange(0,self.n1)*self.deltax
+        #self.z_turb = np.arange(0,self.n1)*self.deltax
     
     def smoothing_spectra(self,f,raw_spectra,n_decade=15):
         '''This function smoothes the signal of the raw spectrum.

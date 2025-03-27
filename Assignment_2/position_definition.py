@@ -33,7 +33,7 @@ class PositionDefinition():
         r_final = r_ground + r_nacelle + r_blade
         return r_final.flatten()
     
-    def position_blade(self,t,omega):
+    def position_blade(self,omega,theta_adding,dt):
         '''This function determines the azimuth position of the blades at 
         time instant t.
         
@@ -51,7 +51,7 @@ class PositionDefinition():
             theta_blade_3 (float):
                 azimuthal position of blade 1 at time t
         '''
-        theta_blade_1 = omega*t
+        theta_blade_1 = theta_adding+omega*dt
         theta_blade_2 = theta_blade_1+2/3*np.pi
         theta_blade_3 = theta_blade_1+4/3*np.pi
         return theta_blade_1,theta_blade_2,theta_blade_3

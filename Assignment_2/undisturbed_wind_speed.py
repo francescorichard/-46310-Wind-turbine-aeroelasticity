@@ -27,7 +27,7 @@ class UndisturbedWindSpeed():
             vel_sys1 (1-D array like): 
                 velocity of the point in system 1 (ground)
         '''
-        if tower_shadow and x[0]<=self.H:
+        if tower_shadow:
             a_x = x[0]*gain+offset
         else:
             a_x = 0
