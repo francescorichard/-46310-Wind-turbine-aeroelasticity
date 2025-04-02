@@ -91,12 +91,13 @@ if __name__ == "__main__":
     
     # simulation time and time step
     dt = 0.145                    # [s] time step for the simulation
-    TOTAL_TIME = 250               # [s] total time of the simulation
+    TOTAL_TIME = 400               # [s] total time of the simulation
     time_steps = int(np.floor(TOTAL_TIME/dt))
     
     # atmosphere's variables
     shear_exponent = 0            # [-] velocity profile's shear exponent
     wind_speed = np.arange(V_IN,V_OUT+0.1,1)
+    # wind_speed = [13]
     RHO = 1.225                   # [kg/m^3] density 
 
 
@@ -130,7 +131,7 @@ if __name__ == "__main__":
     # a certain period to see the reaction's delay in the power.
     stall_model = True
     # the dynamic stall model is activated
-    adding_turbulence = False 
+    adding_turbulence = True 
     # adding turbulence to the wind speed
     tower_shadow = False
     # considering tower's presence when the blades are spinning
@@ -238,18 +239,21 @@ if __name__ == "__main__":
         
     
     #%% turbulence creation
-    # turb_file_1 = r'..\..\turbulence_generator\sim1.bin'
-    # turb_file_2 = r'..\..\turbulence_generator\sim2.bin'
-    # turb_file_3 = r'..\..\turbulence_generator\sim3.bin'
-    # # the turbulence files are created with the Mann model 
-    # ADDING_TURBULENCE = AddingTurbulence(dt, time_steps)
+    input_file_turb = r'..\..\..\Turbulence_generator\input.txt'
+    turb_file_1 = r'..\..\..\Turbulence_generator\sim1.bin'
+    turb_file_2 = r'..\..\..\Turbulence_generator\sim2.bin'
+    turb_file_3 = r'..\..\..\Turbulence_generator\sim3.bin'
+    # saving the input values of turbulence creation
+    input_data_turb = np.loadtxt(input_file_turb,dtype=str)
+    # the turbulence files are created with the Mann model 
+    ADDING_TURBULENCE = AddingTurbulence(dt, time_steps,input_data_turb)
     
-    # # saving the streamwise, normal and vertical turbulence. You need to remember
-    # # that in the simulation, the x and z directions are switched if compared with 
-    # # the one used here. This is why we use the first turb file for w turbulence
-    # w_turb_plane,x_turb,y_turb = ADDING_TURBULENCE.calculating_turbulence_field(turb_file_1)
-    # v_turb_plane,x_turb,y_turb = ADDING_TURBULENCE.calculating_turbulence_field(turb_file_2)
-    # u_turb_plane,x_turb,y_turb = ADDING_TURBULENCE.calculating_turbulence_field(turb_file_3)
+    # saving the streamwise, normal and vertical turbulence. You need to remember
+    # that in the simulation, the x and z directions are switched if compared with 
+    # the one used here. This is why we use the first turb file for w turbulence
+    w_turb_plane,x_turb,y_turb = ADDING_TURBULENCE.calculating_turbulence_field(turb_file_1)
+    v_turb_plane,x_turb,y_turb = ADDING_TURBULENCE.calculating_turbulence_field(turb_file_2)
+    u_turb_plane,x_turb,y_turb = ADDING_TURBULENCE.calculating_turbulence_field(turb_file_3)
     
     #%% wind speed loop
     for mm in range(0,len(wind_speed)):
@@ -295,15 +299,15 @@ if __name__ == "__main__":
                             if adding_turbulence: # I add the turbulence to the V0 in system 1
                                 # interpolating the position of blade's element with
                                 # the turbulence plane for each component
-                                # U_turb[ii,jj,kk,0] = ADDING_TURBULENCE.interpolating_turbulence\
-                                #                     (ii, position_blades[ii,jj,0],\
-                                #                     position_blades[ii,jj,1],u_turb_plane)
-                                # U_turb[ii,jj,kk,1] = ADDING_TURBULENCE.interpolating_turbulence\
-                                #                     (ii, position_blades[ii,jj,0],\
-                                #                     position_blades[ii,jj,1],v_turb_plane)
-                                # U_turb[ii,jj,kk,2] = ADDING_TURBULENCE.interpolating_turbulence\
-                                #                     (ii, position_blades[ii,jj,0],\
-                                #                     position_blades[ii,jj,1],w_turb_plane)
+                                U_turb[ii,jj,kk,0] = ADDING_TURBULENCE.interpolating_turbulence\
+                                                    (ii, position_blades[ii,jj,0],\
+                                                    position_blades[ii,jj,1],u_turb_plane)
+                                U_turb[ii,jj,kk,1] = ADDING_TURBULENCE.interpolating_turbulence\
+                                                    (ii, position_blades[ii,jj,0],\
+                                                    position_blades[ii,jj,1],v_turb_plane)
+                                U_turb[ii,jj,kk,2] = ADDING_TURBULENCE.interpolating_turbulence\
+                                                    (ii, position_blades[ii,jj,0],\
+                                                    position_blades[ii,jj,1],w_turb_plane)
                                                         
                                 # saving velocity in system 1 with turbuelence
                                 V0_system1[ii,jj,:] = UNDISTURBED_WIND.velocity_system1(
@@ -458,47 +462,48 @@ if __name__ == "__main__":
         print(f'V={wind_speed[mm]} m/s required {execution_time:.1f} s')
 angular_velocity = angular_velocity*30/np.pi
 #%% FIGURES
-colors = ['#377eb8','#e41a1c']
-
-
+colors = ['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00']
+mean_pitch = np.mean(TIP_PITCH[:,345:],axis=1)
+mean_cp = np.mean(cp[:,345:],axis=1)
 # total pitch angle, with proportional and integral
-# fig,ax = plt.subplots(1,1)
-# ax.plot(time_array,TIP_PITCH[int(index[0]),:],linestyle='-',label=f'V={print_velocity[0]} m/s',color = 'k')
-# ax.plot(time_array,TIP_PITCH[int(index[1]),:],linestyle='--',label=f'V={print_velocity[1]} m/s',color = 'k')
-# ax.plot(time_array,TIP_PITCH[int(index[2]),:],linestyle='-.',label=f'V={print_velocity[2]} m/s',color = 'k')
-# ax.plot(time_array,TIP_PITCH[int(index[3]),:],linestyle=':',label=f'V={print_velocity[3]} m/s',color = 'k')
-# ax.set_xlabel(r't [s]')
-# ax.set_ylabel(r'$\theta_p\:[^\circ]$')
-# ax.set_xlim([time_array[10], time_array[-1]])
-# ax.legend(loc='lower right')
-# #ax.set_ylim([0.5,5])
-# ax.minorticks_on()
-# ax.grid()
-# ax.tick_params(direction='in',right=True,top =True)
-# ax.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
-# ax.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
-# ax.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
-# fig.savefig(r'../results/question2/pitch_ws_above_rated_with_turbulence.pdf')
+fig,ax = plt.subplots(1,1)
+# ax.plot(time_array,TIP_PITCH[0,:],linestyle='-',label='V=8 m/s',color = 'k')
+ax.plot(time_array,TIP_PITCH[int(index[0]),:],linestyle='-',label=f'V={print_velocity[0]} m/s',color = colors[0])
+ax.plot(time_array,TIP_PITCH[int(index[1]),:],linestyle='--',label=f'V={print_velocity[1]} m/s',color = colors[1])
+ax.plot(time_array,TIP_PITCH[int(index[2]),:],linestyle='-.',label=f'V={print_velocity[2]} m/s',color = colors[2])
+ax.plot(time_array,TIP_PITCH[int(index[3]),:],linestyle=':',label=f'V={print_velocity[3]} m/s',color = colors[3])
+ax.set_xlabel(r't [s]')
+ax.set_ylabel(r'$\theta_p\:[^\circ]$')
+ax.set_xlim([time_array[10], time_array[-1]])
+ax.legend(loc='lower right')
+#ax.set_ylim([0.5,5])
+ax.minorticks_on()
+ax.grid()
+ax.tick_params(direction='in',right=True,top =True)
+ax.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
+ax.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
+ax.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
+fig.savefig(r'../results/question2/pitch_ws_above_rated_with_turbulence.pdf')
 
 # power
-# fig,ax = plt.subplots(1,1)
-# ax.plot(time_array,power[int(index[0]),:],linestyle='-',label=f'V={print_velocity[0]} m/s',color = 'k')
-# ax.plot(time_array,power[int(index[1]),:],linestyle='-',label=f'Mechanical power',color = 'k')
+fig,ax = plt.subplots(1,1)
+# ax.plot(time_array,power[0,:],linestyle='-',label=f'Mech power for V=13 m/s',color = 'k')
+ax.plot(time_array,power[int(index[1]),:],linestyle='-',label=f'V={print_velocity[2]} m/s',color = 'k')
 # ax.plot(time_array,power_el[int(index[1]),:],linestyle='--',label=f'Electric power',color = 'k')
-# # ax.plot(time_array,power[int(index[2]),:],linestyle='-.',label=f'V={print_velocity[2]} m/s',color = 'k')
-# # ax.plot(time_array,power[int(index[3]),:],linestyle=':',label=f'V={print_velocity[3]} m/s',color = 'k')
-# ax.set_xlabel(r't [s]')
-# ax.set_ylabel(r'$P\:[W]$')
-# ax.set_xlim([time_array[10], time_array[-1]])
-# ax.legend(loc='upper right')
-# #ax.set_ylim([0.5,5])
-# ax.minorticks_on()
-# ax.grid()
-# ax.tick_params(direction='in',right=True,top =True)
-# ax.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
-# ax.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
-# ax.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
-# fig.savefig(r'../results/question2/power_ws_above_rated_with_turbulence.pdf')
+# ax.plot(time_array,power[int(index[2]),:],linestyle='-.',label=f'V={print_velocity[2]} m/s',color = 'k')
+# ax.plot(time_array,power[int(index[3]),:],linestyle=':',label=f'V={print_velocity[3]} m/s',color = 'k')
+ax.set_xlabel(r't [s]')
+ax.set_ylabel(r'$P\:[W]$')
+ax.set_xlim([time_array[80], time_array[-1]])
+ax.legend(loc='upper right')
+ax.set_ylim([0,2e7])
+ax.minorticks_on()
+ax.grid()
+ax.tick_params(direction='in',right=True,top =True)
+ax.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
+ax.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
+ax.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
+fig.savefig(r'../results/question2/power_ws_above_rated_with_turbulence.pdf')
 
 # # mechanical power and electric power
 # fig,ax = plt.subplots(1,1)
@@ -520,23 +525,23 @@ colors = ['#377eb8','#e41a1c']
 
 
 # # rotational speed
-# fig,ax = plt.subplots(1,1)
-# # ax.plot(time_array,angular_velocity[int(index[0]),:],linestyle='-',label=f'V={print_velocity[0]} m/s',color = 'k')
+fig,ax = plt.subplots(1,1)
+# ax.plot(time_array,angular_velocity[int(index[0]),:],linestyle='-',label=f'V={print_velocity[0]} m/s',color = 'k')
 # ax.plot(time_array,angular_velocity[int(index[1]),:],linestyle='--',label=f'V={print_velocity[1]} m/s',color = 'k')
-# # ax.plot(time_array,angular_velocity[int(index[2]),:],linestyle='-.',label=f'V={print_velocity[2]} m/s',color = 'k')
-# # ax.plot(time_array,angular_velocity[int(index[3]),:],linestyle=':',label=f'V={print_velocity[3]} m/s',color = 'k')
-# ax.set_xlabel(r't [s]')
-# ax.set_ylabel(r'$\omega\:[rpm]$')
-# ax.set_xlim([time_array[10], time_array[-1]])
-# ax.legend(loc='upper right')
-# #ax.set_ylim([0.5,5])
-# ax.minorticks_on()
-# ax.grid()
-# ax.tick_params(direction='in',right=True,top =True)
-# ax.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
-# ax.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
-# ax.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
-# fig.savefig(r'../results/question2/rotational_speed_ws_above_rated_with_turbulence.pdf')
+ax.plot(time_array,angular_velocity[int(index[2]),:],linestyle='-',label=f'V={print_velocity[2]} m/s',color = 'k')
+# ax.plot(time_array,angular_velocity[int(index[3]),:],linestyle=':',label=f'V={print_velocity[3]} m/s',color = 'k')
+ax.set_xlabel(r't [s]')
+ax.set_ylabel(r'$\omega\:[rpm]$')
+ax.set_xlim([time_array[10], time_array[-1]])
+ax.legend(loc='upper right')
+#ax.set_ylim([0.5,5])
+ax.minorticks_on()
+ax.grid()
+ax.tick_params(direction='in',right=True,top =True)
+ax.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
+ax.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
+ax.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
+fig.savefig(r'../results/question2/rotational_speed_ws_above_rated_with_turbulence.pdf')
 
 # # power coefficient over time for one wind speed
 # fig,ax = plt.subplots(1,1)
@@ -556,52 +561,51 @@ colors = ['#377eb8','#e41a1c']
 # power coefficient for all wind speeds below rated
 index_rated = int(np.floor(rated_velocity-V_IN))
 fig,ax = plt.subplots(1,1)
-ax.plot(wind_speed[0:index_rated+1],cp[0:index_rated+1,-1],linestyle='-',color = 'k',label='$steady\:C_p$')
+# ax.plot(wind_speed[0:index_rated+1],cp[0:index_rated+1,-1],linestyle='-',color = 'k',label='$steady\:C_p$')
+ax.plot(wind_speed[0:index_rated+1],np.mean(cp[0:index_rated+1,345:],axis=1),linestyle='-',color = 'k',label='$mean\:C_p$')
 ax.axhline(y=Cp_opt,linestyle='--',color='k',label='$optimal\:C_p$')
 ax.set_xlabel(r'V [m/s]')
 ax.set_ylabel(r'$C_p$')
 ax.set_xlim([V_IN,wind_speed[index_rated]])
-ax.set_ylim([0.4,0.52])
-ax.legend(loc="lower right", frameon=True)
+# ax.set_ylim([0.4,0.52])
+ax.legend(loc="upper right", frameon=True)
 ax.minorticks_on()
 ax.grid()
 ax.tick_params(direction='in',right=True,top =True)
 ax.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
 ax.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
 ax.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
-fig.savefig(r'../results/question1/steady_cp_different_ws_below_rated.pdf')
+fig.savefig(r'../results/question2/cp_different_ws_below_rated.pdf')
 
 # # tsr for all wind speeds below rated
-fig,ax = plt.subplots(1,1)
-ax.plot(wind_speed[0:index_rated+1],tsr[0:index_rated+1],linestyle='-',color = 'k',label='$steady\:tsr$')
-ax.axhline(y=tsr_opt,linestyle='--',color='k',label='$optimal\:tsr$')
-ax.set_xlabel(r'V [m/s]')
-ax.set_ylabel(r'Tip speed ratio')
-ax.set_xlim([V_IN,wind_speed[index_rated]])
-#ax.set_ylim([0.4,0.52])
-ax.legend(loc="lower right", frameon=True)
-ax.minorticks_on()
-ax.grid()
-ax.tick_params(direction='in',right=True,top =True)
-ax.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
-ax.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
-ax.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
-fig.savefig(r'../results/question1/steady_tsr_different_ws_below_rated.pdf')
-
-# turbulent signal at 65.5 m for blade number 1 over time
 # fig,ax = plt.subplots(1,1)
-# fig.subplots_adjust(hspace=0.3)
-# ax.plot(time_array,turb_hub_height,linestyle='-',color = 'k')
-# ax.set_xlabel(r't [s]')
-# ax.set_ylabel(r'turbulence hub height [m/s]')
-# ax.set_xlim([time_array[0], time_array[-1]])
+# ax.plot(wind_speed[0:index_rated+1],tsr[0:index_rated+1],linestyle='-',color = 'k',label='$steady\:tsr$')
+# ax.axhline(y=tsr_opt,linestyle='--',color='k',label='$optimal\:tsr$')
+# ax.set_xlabel(r'V [m/s]')
+# ax.set_ylabel(r'Tip speed ratio')
+# ax.set_xlim([V_IN,wind_speed[index_rated]])
+# #ax.set_ylim([0.4,0.52])
+# ax.legend(loc="center right", frameon=True)
+# ax.minorticks_on()
 # ax.grid()
 # ax.tick_params(direction='in',right=True,top =True)
 # ax.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
 # ax.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
 # ax.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
+# fig.savefig(r'../results/question1/steady_tsr_different_ws_below_rated.pdf')
 
-# plt.savefig(r'../results/question4/turbulent_fluctuations.pdf')
+# turbulent signal at 65.5 m for blade number 1 over time
+fig,ax = plt.subplots(1,1)
+ax.plot(time_array,w_turb_plane[0:len(time_array),15,15],linestyle='-',color = 'k')
+ax.set_xlabel(r't [s]')
+ax.set_ylabel(r'turbulence signal[m/s]')
+ax.set_xlim([time_array[0], time_array[-1]])
+ax.grid()
+ax.tick_params(direction='in',right=True,top =True)
+ax.tick_params(labelbottom=True,labeltop=False,labelleft=True,labelright=False)
+ax.tick_params(direction='in',which='minor',length=5,bottom=True,top=True,left=True,right=True)
+ax.tick_params(direction='in',which='major',length=10,bottom=True,top=True,right=True,left=True)
+fig.savefig(r'../results/question2/turbulent_fluctuations.pdf')
 #%% calculating the execution time of the script
 
 end_time = tm.perf_counter()

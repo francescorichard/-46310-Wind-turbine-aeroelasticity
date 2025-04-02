@@ -4,16 +4,16 @@ from scipy import interpolate
 
 #%% INITIALIZE THE CLASS
 class AddingTurbulence():
-    def __init__(self,dt,time_steps,n2=32,n3=32,Ly=180,Lz=180):
+    def __init__(self,dt,time_steps,data_turb):
         #self.umean = umean
         self.deltat = dt
         #self.deltax = self.deltat*self.umean
-        self.n1 = 2048
-        self.n2 = n2
-        self.n3 = n3
+        self.n1 = int(data_turb[2])
+        self.n2 = int(data_turb[3])
+        self.n3 = int(data_turb[4])
         #self.Lx = int(self.deltax*(self.n1-1))
-        self.Ly = Ly
-        self.Lz = Lz
+        self.Ly = int(data_turb[6])
+        self.Lz = int(data_turb[7])
         self.deltay=self.Ly/(self.n2-1)
         self.deltaz=self.Lz/(self.n3-1)
         # self.deltat=deltax/self.umean
